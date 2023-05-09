@@ -1,10 +1,10 @@
 import * as esbuild from 'esbuild'
 import { userScripts } from './UserScript.config.js'
 
-Promise.allSettled(
+await Promise.allSettled(
     userScripts.map(script => {
         return esbuild.build({
-            entryPoints: [`./${script.fileName}.js`],
+            entryPoints: [script.fileName],
             bundle: true,
             outdir: 'dist',
             banner: {
@@ -30,14 +30,4 @@ ${
     })
 )
 
-// await esbuild.build({
-//     entryPoints: ['test.js'],
-//     bundle: true,
-//     // write: true,
-//     outdir: 'dist',
-//     banner: {
-//         js: '// qaq\n',
-//     },
-// })
-
-console.log('build done')
+console.log('✨ build done!')

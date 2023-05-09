@@ -8,7 +8,7 @@ const globalConfig = {
 
 const userScriptConfig = [
     {
-        fileName: 'Feishu-Mindnote-Helper',
+        fileName: 'Feishu-Mindnote-Helper.js',
         description:
             'Hide some useless elements in Feishu Mindnote page, make it clean and tidy.',
         matches: [
@@ -17,7 +17,7 @@ const userScriptConfig = [
         icon: 'https://www.google.com/s2/favicons?sz=64&domain=feishu.cn',
     },
     {
-        fileName: 'test',
+        fileName: 'test.js',
         description: 'test',
     },
 ]
