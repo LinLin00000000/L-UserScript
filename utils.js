@@ -1,6 +1,4 @@
-export function getDirname(importMeta) {
-    return decodeURI(importMeta.url).split(/[\\/]/).filter(Boolean).at(-2)
-}
+import path from 'path'
 
 /**
  * @description Group an array by a function
@@ -24,4 +22,17 @@ export function groupBy(array, f) {
         }
     })
     return [trueArray, falseArray]
+}
+
+export function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/**
+ *
+ * @param {string} fileName
+ * @returns {string}
+ */
+export function processFileName(fileName) {
+    return path.basename(fileName).replaceAll('-', ' ').replace('.js', '')
 }

@@ -1,4 +1,4 @@
-import { groupBy } from '../../utils'
+import { groupBy } from './utils'
 
 let selectors = ['#HMRichBox', '[data-balloon="画中画"]']
 const limit = 10

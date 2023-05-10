@@ -4,6 +4,7 @@ const globalConfig = {
     author: 'Lin',
     license: 'MIT License',
     source: 'https://github.com/LinLin00000000/L-UserScript',
+    description: 'Lin\'s userscript. 喵~',
 }
 
 const userScriptConfig = {
@@ -18,10 +19,6 @@ const userScriptConfig = {
     'NTDM Helper': {
         match: ['*.ntdm8.com/*', 'danmu.yhdmjx.com/*'],
     },
-    test: {
-        fileName: 'test.js',
-        description: 'test',
-    },
 }
 
 const userScripts = {}
@@ -29,7 +26,6 @@ for (const [name, config] of Object.entries(userScriptConfig)) {
     userScripts[name] = {
         ...globalConfig,
         name,
-        source: `${globalConfig.source}/tree/main/${name}/src/main.js`,
         ...config,
     }
 }
