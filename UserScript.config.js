@@ -38,5 +38,5 @@ export const userScripts = userScriptConfig.map(script => {
  * @param {string} fileName
  */
 function fileNameCoverter(fileName) {
-    return fileName.replace(/-/g, ' ')
+    return fileName.replace(/-/g, ' ').replace(/\.js$/, '')
 }
