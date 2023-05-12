@@ -39,15 +39,14 @@ export function processFileName(fileName) {
 /**
  * @description 逐步查询，直到所有选择器都找到了元素
  * @param {string[]} selectors
- * @param {(selector: string) => void} callback
+ * @param {(element: Element) => void} callback
  * @param {number} [interval=1000]
  * @param {number} [limit=10]
  * @returns {void}
  * @example
  * progressiveQuery(
  *    ['.mindmap', '.mindnote-minder-comment'],
- *   selector => {
- *      document.querySelectorAll(selector).forEach(node => (node.hidden = true))
+ *    element => {element.style.display = 'none'}
  *  }
  * )
  */
@@ -64,7 +63,9 @@ export function progressiveQuery(
             selector => document.querySelectorAll(selector).length > 0
         )
 
-        appear.forEach(callback)
+        appear.forEach(selector => {
+            document.querySelectorAll(selector).forEach(callback)
+        })
 
         if (disappear.length === 0 || count++ > limit) {
             clearInterval(timer)
@@ -75,10 +76,33 @@ export function progressiveQuery(
 }
 
 /**
- * @param {String} selector
+ * @param {Element} element
  */
-export function hideElements(selector) {
-    document.querySelectorAll(selector).forEach(node => {
-        node.style.display = 'none'
-    })
+export function hideElements(element) {
+    element.style.display = 'none'
+}
+
+/**
+ * 设置跨域信息
+ * @param {String} message 跨域信息
+ */
+export function setCrossMessage(message, iframeSelector) {
+    const iframe = document.querySelector(iframeSelector)
+    iframe.src = iframe.src + '#' + message
+    // window.name = message
+}
+
+export function initCrossMessage() {
+    window.onhashchange = () => {
+        console.log(`window.location.hash: ${window.location.hash}`)
+        window._mes = window.location.hash
+    }
+}
+
+/**
+ * 获取跨域传递的信息
+ * @return {string} 跨域传递的信息
+ */
+export function getCrossMessage() {
+    return window._mes
 }
