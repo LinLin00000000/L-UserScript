@@ -29,10 +29,56 @@ export function sleep(ms) {
 }
 
 /**
- *
  * @param {string} fileName
  * @returns {string}
  */
 export function processFileName(fileName) {
     return path.basename(fileName).replaceAll('-', ' ').replace('.js', '')
+}
+
+/**
+ * @description 逐步查询，直到所有选择器都找到了元素
+ * @param {string[]} selectors
+ * @param {(selector: string) => void} callback
+ * @param {number} [interval=1000]
+ * @param {number} [limit=10]
+ * @returns {void}
+ * @example
+ * progressiveQuery(
+ *    ['.mindmap', '.mindnote-minder-comment'],
+ *   selector => {
+ *      document.querySelectorAll(selector).forEach(node => (node.hidden = true))
+ *  }
+ * )
+ */
+export function progressiveQuery(
+    selectors,
+    callback,
+    interval = 1000,
+    limit = 10
+) {
+    let count = 0
+    const timer = setInterval(() => {
+        const [appear, disappear] = groupBy(
+            selectors,
+            selector => document.querySelectorAll(selector).length > 0
+        )
+
+        appear.forEach(callback)
+
+        if (disappear.length === 0 || count++ > limit) {
+            clearInterval(timer)
+        } else {
+            selectors = disappear
+        }
+    }, interval)
+}
+
+/**
+ * @param {String} selector
+ */
+export function hideElements(selector) {
+    document.querySelectorAll(selector).forEach(node => {
+        node.style.display = 'none'
+    })
 }
