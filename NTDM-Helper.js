@@ -24,14 +24,14 @@ if (url) {
     initCrossMessage()
 }
 
-window.addEventListener('message', console.log)
+// window.addEventListener('message', console.log)
 progressiveQuery(['#container > p'], e => {
     e.insertAdjacentHTML(
         'beforebegin',
         `<button type="button" id="debug" >debug</button>`
     )
     document.querySelector('#debug').onclick = () => {
-        window.postMessage('debug', 'https://danmu.yhdmjx.com')
+        // window.postMessage('debug', 'https://danmu.yhdmjx.com')
     }
 })
 
