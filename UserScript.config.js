@@ -29,14 +29,15 @@ const userScriptConfig = [
 export const userScripts = userScriptConfig
     .filter(e => !e.skip)
     .map(script => {
+        const name =
+            script.name ||
+            modifyFileExtension(script.fileName.replace(/-/g, ' '))
+
         const scriptConfig = {
+            name,
             ...globalConfig,
             ...script,
         }
-
-        scriptConfig.name =
-            scriptConfig.name ||
-            modifyFileExtension(script.fileName.replace(/-/g, ' '))
 
         return scriptConfig
     })
