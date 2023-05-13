@@ -1,5 +1,3 @@
-import path from 'path'
-
 /**
  * @description Group an array by a function
  * @template T
@@ -26,14 +24,6 @@ export function groupBy(array, f) {
 
 export function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-/**
- * @param {string} fileName
- * @returns {string}
- */
-export function processFileName(fileName) {
-    return path.basename(fileName).replaceAll('-', ' ').replace('.js', '')
 }
 
 /**
@@ -105,4 +95,72 @@ export function initCrossMessage() {
  */
 export function getCrossMessage() {
     return window._mes
+}
+
+/**
+ * @param {{[key: string]: string | string[]}} config
+ * @param {string[]} [blacklist]
+ * @param {string} [separator]
+ * @param {number} [spaceNum]
+ * @returns {string}
+ */
+export function bannerBuilder(
+    config,
+    blacklist = ['skip', 'fileName'],
+    separator = '\n',
+    spaceNum = 2
+) {
+    const config1 = Object.fromEntries(
+        Object.entries(config).filter(([key]) => !blacklist.includes(key))
+    )
+    const maxLen = Object.keys(config1).reduce(
+        (acc, key) => (acc > key.length ? acc : key.length),
+        0
+    )
+    const fields = Object.entries(config1).map(([key, value]) => {
+        const space = ' '.repeat(maxLen - key.length + spaceNum)
+        const keyString = `// @${key}${space}`
+        return Array.isArray(value)
+            ? value.map(e => keyString + e).join(separator)
+            : keyString + value
+    })
+
+    const header = `// ==UserScript==`
+    const footer = `// ==/UserScript==`
+    return [header, ...fields, footer].join(separator)
+}
+
+export function isNil(value) {
+    return value === undefined || value === null
+}
+
+export function isEmptyString(str) {
+    return isNil(str) || str === ''
+}
+
+/**
+ * 获取文件的扩展名
+ * @param {string} fileName 文件名
+ * @returns {string} 文件扩展名
+ */
+export function getFileExtension(fileName) {
+    const index = fileName.lastIndexOf('.')
+    return index === -1 ? '' : fileName.substring(index + 1)
+}
+
+/**
+ * Modify file extension
+ *
+ * @param {string} fileName
+ * @param {string} [newExtension='']
+ * @returns {string}
+ */
+export function modifyFileExtension(fileName, newExtension = '') {
+    if (!isEmptyString(newExtension) && !newExtension.startsWith('.')) {
+        newExtension = '.' + newExtension
+    }
+    const index = fileName.lastIndexOf('.')
+    return index === -1
+        ? fileName + newExtension
+        : fileName.substring(0, index) + newExtension
 }

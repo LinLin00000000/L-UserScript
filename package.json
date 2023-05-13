@@ -5,15 +5,15 @@
     "type": "module",
     "main": "index.js",
     "scripts": {
-        "dev": "esno index.js dev",
-        "mount": "esno index.js mount"
+        "dev": "cross-env NODE_ENV=DEV esno --watch index.js",
+        "build": "esno index.js"
     },
     "keywords": [],
     "author": "",
     "license": "MIT",
     "devDependencies": {
         "esno": "^0.16.3",
-        "vite": "^4.3.5",
-        "vite-plugin-monkey": "^3.2.1"
+        "cross-env": "^7.0.3",
+        "esbuild": "^0.17.19"
     }
 }
