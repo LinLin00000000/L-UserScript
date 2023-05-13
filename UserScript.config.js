@@ -1,14 +1,18 @@
+import { modifyFileExtension } from './utils'
+
 const globalConfig = {
     namespace: 'L-UserScript',
     version: '0.1.0',
     author: 'Lin',
     license: 'MIT License',
     source: 'https://github.com/LinLin00000000/L-UserScript',
-    description: 'Lin\'s userscript. 喵~',
+    description: "Lin's userscript. 喵~",
 }
 
-const userScriptConfig = {
-    'Feishu Mindnote Helper': {
+const userScriptConfig = [
+    {
+        fileName: 'Feishu-Mindnote-Helper.js',
+        skip: true,
         description:
             'Hide some useless elements in Feishu Mindnote page, make it clean and tidy.',
         match: [
@@ -16,18 +20,23 @@ const userScriptConfig = {
         ],
         icon: 'https://www.google.com/s2/favicons?sz=64&domain=feishu.cn',
     },
-    'NTDM Helper': {
+    {
+        fileName: 'NTDM-Helper.js',
         match: ['*.ntdm8.com/*', 'danmu.yhdmjx.com/*'],
     },
-}
+]
 
-const userScripts = {}
-for (const [name, config] of Object.entries(userScriptConfig)) {
-    userScripts[name] = {
-        ...globalConfig,
-        name,
-        ...config,
-    }
-}
+export const userScripts = userScriptConfig
+    .filter(e => !e.skip)
+    .map(script => {
+        const scriptConfig = {
+            ...globalConfig,
+            ...script,
+        }
 
-export { userScripts }
+        scriptConfig.name =
+            scriptConfig.name ||
+            modifyFileExtension(script.fileName.replace(/-/g, ' '))
+
+        return scriptConfig
+    })
