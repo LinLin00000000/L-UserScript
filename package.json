@@ -6,6 +6,7 @@
     "main": "index.js",
     "scripts": {
         "dev": "cross-env NODE_ENV=DEV esno index.js",
+        "dev:meta": "cross-env NODE_ENV=DEV esno --watch index.js",
         "build": "esno index.js"
     },
     "keywords": [],
