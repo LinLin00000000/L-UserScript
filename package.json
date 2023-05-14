@@ -12,8 +12,9 @@
     "author": "",
     "license": "MIT",
     "devDependencies": {
-        "esno": "^0.16.3",
         "cross-env": "^7.0.3",
-        "esbuild": "^0.17.19"
+        "esbuild": "^0.17.19",
+        "esno": "^0.16.3",
+        "open": "^9.1.0"
     }
 }
