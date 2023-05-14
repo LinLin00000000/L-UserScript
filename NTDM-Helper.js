@@ -1,11 +1,4 @@
-import {
-    getCrossMessage,
-    hideElements,
-    initCrossMessage,
-    initMessageEmitter,
-    progressiveQuery,
-    setCrossMessage,
-} from './utils'
+import { hideElements, initMessageEmitter, progressiveQuery } from './utils'
 
 const selectors = ['#HMRichBox', '[data-balloon="画中画"]']
 
