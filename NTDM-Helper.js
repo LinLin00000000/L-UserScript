@@ -2,6 +2,7 @@ import {
     getCrossMessage,
     hideElements,
     initCrossMessage,
+    initMessageEmitter,
     progressiveQuery,
     setCrossMessage,
 } from './utils'
@@ -14,24 +15,38 @@ const url =
     document.querySelector('.active-play')?.parentNode?.nextElementSibling
         ?.firstElementChild?.href
 
+let messageEmitter
 if (url) {
-    setTimeout(() => {
-        progressiveQuery(['#playleft > iframe'], () => {
-            setCrossMessage(url, '#playleft > iframe')
-        })
-    }, 1000)
+    messageEmitter = initMessageEmitter('parent', {
+        trustedOrigin: 'https://danmu.yhdmjx.com',
+        targetSelector: '#playleft > iframe',
+    })
+    messageEmitter.addListener((message, e) => {
+        if (message === 'nextVideo') {
+            window.location.href = url
+        }
+    })
 } else {
-    initCrossMessage()
+    messageEmitter = initMessageEmitter('child', {
+        targetOrigin: 'http://www.ntdm8.com',
+    })
 }
 
-// window.addEventListener('message', console.log)
+// window.addEventListener('message', log)
+messageEmitter.addListener((message, e) => {
+    console.log(`selfOringin: ${window.location.origin}`)
+    console.log(`message: ${message}`)
+    console.log(`originEvent: `, e)
+})
+
 progressiveQuery(['#container > p'], e => {
     e.insertAdjacentHTML(
         'beforebegin',
         `<button type="button" id="debug" >debug</button>`
     )
     document.querySelector('#debug').onclick = () => {
-        // window.postMessage('debug', 'https://danmu.yhdmjx.com')
+        postMessageTest()
+        console.log('debug')
     }
 })
 
@@ -44,11 +59,14 @@ progressiveQuery(['#bofang'], e => {
 })
 
 function nextVideo() {
-    const url = getCrossMessage()?.slice(1)
+    messageEmitter.emitMessage('nextVideo')
+}
 
-    console.log(`next video url: ${url}`)
+function log(e) {
+    console.log(e)
+    console.log(`window.location ${window.location}`)
+}
 
-    if (url) {
-        window.location.href = url
-    }
+function postMessageTest(message = 'debug') {
+    messageEmitter.emitMessage(message)
 }
