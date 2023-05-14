@@ -73,28 +73,54 @@ export function hideElements(element) {
 }
 
 /**
- * 设置跨域信息
- * @param {String} message 跨域信息
+ * @typedef {Object} MessageEmitter
+ * @property {(listener: (message: string) => void) => void} addListener
+ * @property {(message: string) => void} emitMessage
  */
-export function setCrossMessage(message, iframeSelector) {
-    const iframe = document.querySelector(iframeSelector)
-    iframe.src = iframe.src + '#' + message
-    // window.name = message
-}
-
-export function initCrossMessage() {
-    window.onhashchange = () => {
-        console.log(`window.location.hash: ${window.location.hash}`)
-        window._mes = window.location.hash
-    }
-}
 
 /**
- * 获取跨域传递的信息
- * @return {string} 跨域传递的信息
+ * @param {'parent' | 'child'} identity
+ * @param {string} [options.trustedOrigin='*'] 仅 parent 需要配置
+ * @param {string} [options.targetSelector='#iframe'] 仅 parent 需要配置
+ * @param {string} [options.targetOrigin='*'] 仅 child 需要配置
+ * @returns {MessageEmitter}
  */
-export function getCrossMessage() {
-    return window._mes
+export function initMessageEmitter(
+    identity,
+    { trustedOrigin = '*', targetSelector = '#iframe', targetOrigin = '*' } = {}
+) {
+    switch (identity) {
+        case 'parent':
+            return {
+                addListener(listener) {
+                    window.addEventListener('message', e => {
+                        if (
+                            trustedOrigin === '*' ||
+                            e.origin === trustedOrigin
+                        ) {
+                            listener(e.data, e)
+                        }
+                    })
+                },
+                emitMessage(message) {
+                    const iframe = document.querySelector(targetSelector)
+                    if (iframe) {
+                        iframe.src = iframe.src + '#' + message
+                    }
+                },
+            }
+        case 'child':
+            return {
+                addListener(listener) {
+                    window.addEventListener('hashchange', e => {
+                        listener(window.location.hash.slice(1), e)
+                    })
+                },
+                emitMessage(message) {
+                    window.parent.postMessage(message, targetOrigin)
+                },
+            }
+    }
 }
 
 /**
