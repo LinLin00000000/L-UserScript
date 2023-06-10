@@ -45,6 +45,8 @@ if (!fulfilled.length) {
 const ctxs = fulfilled.map(ctx => ctx.value)
 
 // 随便一个都行，主要是为了起一个服务器
+// 为什么需要服务器？
+// 因为安装脚本需要服务器，从服务器上获取脚本文件才可以触发油猴插件的安装
 const ctx = ctxs[0]
 const { port } = await ctx.serve({
     servedir: 'dist',
@@ -91,6 +93,9 @@ if (DEV) {
     log('✨ build done!')
 
     await installScripts()
+
+    // 不是 DEV 模式的话不需要保持开发服务器一直在线
+    // 所以需要定时以结束进程
     setTimeout(() => {
         process.exit(0)
     }, 3000)
