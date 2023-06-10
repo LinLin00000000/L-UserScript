@@ -93,7 +93,7 @@ if (DEV) {
     await installScripts()
     setTimeout(() => {
         process.exit(0)
-    }, 1000)
+    }, 3000)
 }
 
 async function installScripts() {
