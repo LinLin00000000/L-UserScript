@@ -21,9 +21,10 @@ if (url) {
     })
 } else {
     messageEmitter = initMessageEmitter('child', {
-        targetOrigin: 'http://www.ntdm8.com',
+        targetOrigin: 'https://www.ntdm8.com',
     })
 }
+console.log(`origin: ${window.location.origin} messageEmitter initialized`)
 
 progressiveQuery(['#container > p'], e => {
     e.insertAdjacentHTML(
