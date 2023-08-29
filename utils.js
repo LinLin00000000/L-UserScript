@@ -67,6 +67,24 @@ export function progressiveQuery(
 }
 
 /**
+ * @description 轮询查询，永不停止
+ * @param {string[] | string} selector
+ * @param {(element: Element) => void} callback
+ * @param {number} [interval=1000]
+ * @returns {void}
+ */
+export function pollingQuery(selector, callback, interval = 1000) {
+    const selectors = Array.isArray(selector) ? selector : [selector]
+    setInterval(
+        () =>
+            selectors.forEach(s =>
+                document.querySelectorAll(s).forEach(callback)
+            ),
+        interval
+    )
+}
+
+/**
  * @param {Element} element
  */
 export function hideElements(element) {
