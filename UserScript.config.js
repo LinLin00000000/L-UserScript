@@ -11,6 +11,13 @@ const globalConfig = {
 
 const userScriptConfig = [
     {
+        fileName: 'Debug-Utils.js',
+        skip: true,
+        description: 'LinLin\'s web debug utils',
+        match: ['*://*/*'],
+        grant: ['unsafeWindow']
+    },
+    {
         fileName: 'Feishu-Mindnote-Helper.js',
         skip: true,
         description:
