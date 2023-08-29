@@ -29,8 +29,13 @@ const userScriptConfig = [
     },
     {
         fileName: 'NTDM-Helper.js',
+        skip: true,
         match: ['*.ntdm8.com/*', 'danmu.yhdmjx.com/*'],
     },
+    {
+        fileName: 'Zhihu-Cleaner.js',
+        match: ['https://*.zhihu.com/*'],
+    }
 ]
 
 export const userScripts = userScriptConfig
