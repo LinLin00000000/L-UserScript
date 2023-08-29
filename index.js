@@ -12,7 +12,6 @@ import open from 'open'
 const { log } = console
 const outdir = 'dist'
 
-// log(process.env.DEBUG)
 const DEV = process.env.NODE_ENV === 'DEV'
 
 const ctxsResult = await Promise.allSettled(
@@ -23,7 +22,7 @@ const ctxsResult = await Promise.allSettled(
             outdir,
             outExtension: { '.js': '.user.js' },
             banner: {
-                js: bannerBuilder(script),
+                js: bannerBuilder(script) + '\nconst DEV = ' + DEV + ';\n',
             },
         })
     })
