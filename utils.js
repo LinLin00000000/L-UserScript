@@ -223,3 +223,21 @@ export function modifyFileExtension(fileName, newExtension = '') {
         ? fileName + newExtension
         : fileName.substring(0, index) + newExtension
 }
+
+/**
+ * 根据当前页面的路径，判断是否执行 f 函数
+ *
+ * @param {string} path
+ * @param {() => void} f
+ * @returns {void}
+ *
+ */
+export function switchPath(path, f) {
+    if (path.startsWith('/')) {
+        console.error('path should not start with /')
+        return
+    }
+    if (window.location.pathname.split('/')[1].trim() === path) {
+        f()
+    }
+}
