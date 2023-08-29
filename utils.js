@@ -92,6 +92,20 @@ export function hideElements(element) {
 }
 
 /**
+ * @param {Element} element 
+ */
+export function removeElement(element) {
+    element.remove()
+}
+
+/**
+ * @param {Element} element 
+ */
+export function CSSJustifyCenter(element) {
+    element.style['justify-content'] = 'center'
+}
+
+/**
  * @typedef {Object} MessageEmitter
  * @property {(listener: (message: string) => void) => void} addListener
  * @property {(message: string) => void} emitMessage
