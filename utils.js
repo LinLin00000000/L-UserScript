@@ -28,7 +28,7 @@ export function sleep(ms) {
 
 /**
  * @description 逐步查询，直到所有选择器都找到了元素
- * @param {string[]} selectors
+ * @param {string[] | string} selector
  * @param {(element: Element) => void} callback
  * @param {number} [interval=1000]
  * @param {number} [limit=10]
@@ -41,12 +41,13 @@ export function sleep(ms) {
  * )
  */
 export function progressiveQuery(
-    selectors,
+    selector,
     callback,
-    interval = 1000,
-    limit = 10
+    interval = 300,
+    limit = 20
 ) {
     let count = 0
+    let selectors = Array.isArray(selector) ? selector : [selector]
     const timer = setInterval(() => {
         const [appear, disappear] = groupBy(
             selectors,
