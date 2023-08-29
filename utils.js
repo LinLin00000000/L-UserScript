@@ -241,3 +241,20 @@ export function switchPath(path, f) {
         f()
     }
 }
+
+export function debug(...args) {
+    if (DEV) {
+        args.forEach(arg => {
+            switch (typeof arg) {
+                case 'string':
+                    console.log(arg)
+                    break
+                case 'function':
+                    console.log(arg())
+                    break
+                default:
+                    throw new Error('unknown type')
+            }
+        })
+    }
+}
