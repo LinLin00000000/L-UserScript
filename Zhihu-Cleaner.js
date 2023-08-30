@@ -7,6 +7,11 @@ import {
     switchPath,
 } from './utils'
 
+// 通用规则，每个页面都适用
+
+// 如果出错了，则自动刷新页面
+progressiveQuery('.ErrorPage', _ => location.reload())
+
 // 问题页面
 switchPath('question', () => {
     debug('question page')
@@ -15,9 +20,6 @@ switchPath('question', () => {
     if (location.pathname.includes('/answer')) {
         location.pathname = location.pathname.split('/answer')[0]
     }
-
-    // 如果出错了，则自动刷新页面
-    progressiveQuery('.ErrorPage', _ => location.reload())
 
     // 默认展开问题详情
     // progressiveQuery('.QuestionRichText-more', e => e.click())
