@@ -9,8 +9,8 @@ import {
 
 // 通用规则，每个页面都适用
 
-// 如果出错了，则自动刷新页面
-progressiveQuery('.ErrorPage', _ => location.reload())
+// 轮询检查如果出错了，则自动刷新页面
+pollingQuery('.ErrorPage', _ => location.reload())
 
 // 问题页面
 switchPath('question', () => {
