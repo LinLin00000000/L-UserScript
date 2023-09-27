@@ -16,10 +16,10 @@ progressiveQuery('.ErrorPage', _ => location.reload())
 switchPath('question', () => {
     debug('question page')
 
-    // 默认展开全部回答
-    if (location.pathname.includes('/answer')) {
-        location.pathname = location.pathname.split('/answer')[0]
-    }
+    // 默认不展开全部回答
+    // if (location.pathname.includes('/answer')) {
+    //     location.pathname = location.pathname.split('/answer')[0]
+    // }
 
     // 默认展开问题详情
     // progressiveQuery('.QuestionRichText-more', e => e.click())
