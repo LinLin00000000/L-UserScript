@@ -13,9 +13,9 @@ const userScriptConfig = [
     {
         fileName: 'Debug-Utils.js',
         skip: true,
-        description: 'LinLin\'s web debug utils',
+        description: "LinLin's web debug utils",
         match: ['*://*/*'],
-        grant: ['unsafeWindow']
+        grant: ['unsafeWindow'],
     },
     {
         fileName: 'Feishu-Mindnote-Helper.js',
@@ -28,14 +28,15 @@ const userScriptConfig = [
         icon: 'https://www.google.com/s2/favicons?sz=64&domain=feishu.cn',
     },
     {
-        fileName: 'NTDM-Helper.js',
-        skip: true,
-        match: ['*.ntdm8.com/*', 'danmu.yhdmjx.com/*'],
+        fileName: 'YHDM-Player-Helper.js',
+        skip: false,
+        match: ['*.ntdm8.com/*', '*.mxdm9.com/*', 'danmu.yhdmjx.com/*'],
     },
     {
         fileName: 'Zhihu-Cleaner.js',
+        skip: true,
         match: ['https://*.zhihu.com/*'],
-    }
+    },
 ]
 
 export const userScripts = userScriptConfig
