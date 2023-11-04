@@ -5,6 +5,8 @@ import {
     progressiveQuery,
 } from './utils'
 
+const LELEPLAYER_SPEED = 'leleplayer-data-speed'
+
 const selectors = ['#HMRichBox', '[data-balloon="画中画"]']
 
 progressiveQuery(selectors, hideElements)
@@ -47,19 +49,18 @@ if (!location.href.includes('danmu.yhdmjx.com')) {
 
     progressiveQuery(['.speed-stting > [data-speed]'], e => {
         e.addEventListener('click', event => {
-            console.log(event.target)
             const speed =
                 event.target.dataset?.speed ??
                 event.target.parentNode?.dataset?.speed
-            localStorage.setItem('leleplayer-data-speed', speed)
+            localStorage.setItem(LELEPLAYER_SPEED, speed)
         })
     })
 
-    if (!isEmptyString(localStorage.getItem('leleplayer-data-speed'))) {
+    if (!isEmptyString(localStorage.getItem(LELEPLAYER_SPEED))) {
         progressiveQuery(
             [
                 `.speed-stting > [data-speed='${localStorage.getItem(
-                    'leleplayer-data-speed'
+                    LELEPLAYER_SPEED
                 )}']`,
             ],
             e => e.click()
