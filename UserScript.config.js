@@ -12,7 +12,7 @@ const globalConfig = {
 const userScriptConfig = [
     {
         fileName: 'Debug-Utils.js',
-        skip: true,
+        // skip: true,
         description: "LinLin's web debug utils",
         match: ['*://*/*'],
         grant: ['unsafeWindow'],
@@ -29,7 +29,7 @@ const userScriptConfig = [
     },
     {
         fileName: 'YHDM-Player-Helper.js',
-        skip: false,
+        skip: true,
         match: ['*.ntdm8.com/*', '*.mxdm9.com/*', 'danmu.yhdmjx.com/*'],
     },
     {
