@@ -37,11 +37,12 @@ switchPath('question', () => {
     progressiveQuery('.SearchBar', e => (e.style['max-width'] = '80%'))
 
     // 删除回答侧边栏
-    progressiveQuery('.Question-sideColumn', removeElement)
-
-    // 将回答区域设为 90% 宽带并居中
-    progressiveQuery('.Question-main', CSSJustifyCenter)
-    progressiveQuery('.Question-mainColumn', e => (e.style.width = '90%'))
+    pollingQuery('.Question-sideColumn', e => {
+        e.remove()
+        // 将回答区域设为 90% 宽带并居中
+        progressiveQuery('.Question-main', CSSJustifyCenter)
+        progressiveQuery('.Question-mainColumn', e => (e.style.width = '90%'))
+    })
 
     // 隐藏关注按钮，轮询查询防止新的回答出现新的关注按钮
     pollingQuery('.FollowButton', removeElement)
