@@ -12,7 +12,7 @@ const globalConfig = {
 const userScriptConfig = [
     {
         fileName: 'Debug-Utils.js',
-        // skip: true,
+        skip: true,
         description: "LinLin's web debug utils",
         match: ['*://*/*'],
         grant: ['unsafeWindow'],
