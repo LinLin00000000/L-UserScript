@@ -37,6 +37,11 @@ const userScriptConfig = [
         skip: true,
         match: ['https://*.zhihu.com/*'],
     },
+    {
+        fileName: 'Hexdocs-Helper.js',
+        skip: true,
+        match: ['https://hexdocs.pm/*']
+    }
 ]
 
 export const userScripts = userScriptConfig
