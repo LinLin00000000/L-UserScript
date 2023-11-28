@@ -8,6 +8,7 @@ import { userScripts } from './UserScript.config.js'
 import esbuild from 'esbuild'
 import path from 'path'
 import open from 'open'
+import fs from 'fs/promises'
 
 const { log } = console
 const outdir = 'dist'
@@ -47,8 +48,13 @@ const ctxs = fulfilled.map(ctx => ctx.value)
 // 为什么需要服务器？
 // 因为安装脚本需要服务器，从服务器上获取脚本文件才可以触发油猴插件的安装
 const ctx = ctxs[0]
-const { port } = await ctx.serve({
-    servedir: 'dist',
+
+const host = '192.168.3.2'
+const port = 9573
+await ctx.serve({
+    host,
+    port,
+    servedir: outdir,
 })
 
 if (DEV) {
@@ -103,14 +109,14 @@ if (DEV) {
 async function installScripts() {
     const extension = DEV ? '.meta.user.js' : '.user.js'
     return await Promise.allSettled(
-        userScripts
-            .map(
-                script =>
-                    `http://127.0.0.1:${port}/${modifyFileExtension(
-                        script.fileName,
-                        extension
-                    )}`
-            )
-            .map(open)
+        userScripts.map(async script => {
+            const jsFile = modifyFileExtension(script.fileName, extension)
+            const tmpFile = modifyFileExtension(script.fileName, 'html')
+            const tmpFilePath = path.join(outdir, tmpFile)
+            const htmlContent = `<script>location.href = './${jsFile}'; window.close()</script>`
+            await fs.writeFile(tmpFilePath, htmlContent)
+            await open(tmpFilePath)
+            setTimeout(() => fs.unlink(tmpFilePath), 2000)
+        })
     )
 }
