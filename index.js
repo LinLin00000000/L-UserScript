@@ -44,19 +44,6 @@ if (!fulfilled.length) {
 
 const ctxs = fulfilled.map(ctx => ctx.value)
 
-// 随便一个都行，主要是为了起一个服务器
-// 为什么需要服务器？
-// 因为安装脚本需要服务器，从服务器上获取脚本文件才可以触发油猴插件的安装
-const ctx = ctxs[0]
-
-const host = '192.168.3.2'
-const port = 9573
-await ctx.serve({
-    host,
-    port,
-    servedir: outdir,
-})
-
 if (DEV) {
     log(`DEV: ${DEV}`)
 
@@ -114,8 +101,10 @@ async function installScripts() {
             const tmpFile = modifyFileExtension(script.fileName, 'html')
             const tmpFilePath = path.join(outdir, tmpFile)
             const htmlContent = `<script>location.href = './${jsFile}'; window.close()</script>`
+
             await fs.writeFile(tmpFilePath, htmlContent)
             await open(tmpFilePath)
+            
             setTimeout(() => fs.unlink(tmpFilePath), 2000)
         })
     )
