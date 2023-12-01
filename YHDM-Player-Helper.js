@@ -1,8 +1,17 @@
+usbuild: {
+    const { build } = await import('usbuild')
+    await build({
+        ...globalConfig,
+        match: ['*.ntdm8.com/*', '*.mxdm9.com/*', 'danmu.yhdmjx.com/*'],
+    })
+}
+
 import {
     hideElements,
     initMessageEmitter,
     isEmptyString,
     progressiveQuery,
+    globalConfig,
 } from './utils'
 
 const LELEPLAYER_SPEED = 'leleplayer-data-speed'

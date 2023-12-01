@@ -13,11 +13,7 @@ export function groupBy(array, f) {
     const trueArray = []
     const falseArray = []
     array.forEach(item => {
-        if (f(item)) {
-            trueArray.push(item)
-        } else {
-            falseArray.push(item)
-        }
+        ;(f(item) ? trueArray : falseArray).push(item)
     })
     return [trueArray, falseArray]
 }
@@ -85,6 +81,7 @@ export function pollingQuery(selector, callback, interval = 1000) {
 }
 
 /**
+ * @description 仅隐藏元素, 它仍然存在于 DOM 树中
  * @param {Element} element
  */
 export function hideElements(element) {
@@ -92,14 +89,15 @@ export function hideElements(element) {
 }
 
 /**
- * @param {Element} element 
+ * @description 从 DOM 中完全移除元素
+ * @param {Element} element
  */
 export function removeElement(element) {
     element.remove()
 }
 
 /**
- * @param {Element} element 
+ * @param {Element} element
  */
 export function CSSJustifyCenter(element) {
     element.style['justify-content'] = 'center'
@@ -257,4 +255,13 @@ export function debug(...args) {
             }
         })
     }
+}
+
+export const globalConfig = {
+    namespace: 'L-UserScript',
+    version: '0.1.0',
+    author: 'Lin',
+    license: 'MIT License',
+    source: 'https://github.com/LinLin00000000/L-UserScript',
+    description: "Lin's userscript. 喵~",
 }

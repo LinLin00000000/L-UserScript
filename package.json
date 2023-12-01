@@ -1,21 +1,6 @@
 {
-    "name": "L-UserScript",
-    "version": "1.0.0",
-    "description": "",
     "type": "module",
-    "main": "index.js",
-    "scripts": {
-        "dev": "cross-env NODE_ENV=DEV esno index.js",
-        "dev:meta": "cross-env NODE_ENV=DEV esno --watch index.js",
-        "build": "esno index.js"
-    },
-    "keywords": [],
-    "author": "",
-    "license": "MIT",
     "devDependencies": {
-        "cross-env": "^7.0.3",
-        "esbuild": "^0.17.19",
-        "esno": "^0.16.3",
-        "open": "^9.1.0"
+        "usbuild": "workspace:../usbuild"
     }
 }

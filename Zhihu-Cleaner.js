@@ -1,10 +1,15 @@
+usbuild: {
+    const { build } = await import('usbuild')
+    await build({ ...globalConfig, match: ['https://*.zhihu.com/*'] })
+}
+
 import {
     CSSJustifyCenter,
-    debug,
     pollingQuery,
     progressiveQuery,
     removeElement,
     switchPath,
+    globalConfig,
 } from './utils'
 
 // 通用规则，每个页面都适用
@@ -14,8 +19,6 @@ pollingQuery('.ErrorPage', _ => location.reload())
 
 // 问题页面
 switchPath('question', () => {
-    debug('question page')
-
     // 默认不展开全部回答
     // if (location.pathname.includes('/answer')) {
     //     location.pathname = location.pathname.split('/answer')[0]
@@ -61,8 +64,6 @@ switchPath('question', () => {
 
 // 专栏页面
 switchPath('p', () => {
-    debug('column page')
-
     progressiveQuery(
         '.ColumnPageHeader-Wrapper, .Post-SideActions',
         removeElement
@@ -83,8 +84,6 @@ switchPath('p', () => {
 
 // 搜索页面
 switchPath('search', () => {
-    debug('search page')
-
     // 将知乎 logo 导航到知乎发现，因为知乎首页需要登录
     progressiveQuery(
         '[aria-label="知乎"]',
