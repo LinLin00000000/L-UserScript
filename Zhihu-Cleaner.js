@@ -1,21 +1,28 @@
-usbuild: {
-    const { build } = await import('usbuild')
-    await build({ ...globalConfig, match: ['https://*.zhihu.com/*'] })
-}
-
 import {
     CSSJustifyCenter,
-    pollingQuery,
-    progressiveQuery,
     removeElement,
     switchPath,
     globalConfig,
+    dynamicQuery,
+    foreverQuery,
 } from './utils'
+
+import { build } from 'usbuild'
+await build(
+    {
+        ...globalConfig,
+        match: ['https://*.zhihu.com/*'],
+    },
+    {
+        // dev: true,
+        enableLocalFileRequireInDev: true,
+    }
+)
 
 // 通用规则，每个页面都适用
 
 // 轮询检查如果出错了，则自动刷新页面
-pollingQuery('.ErrorPage', _ => location.reload())
+foreverQuery('.ErrorPage', _ => location.reload())
 
 // 问题页面
 switchPath('question', () => {
@@ -25,57 +32,72 @@ switchPath('question', () => {
     // }
 
     // 默认展开问题详情
-    // progressiveQuery('.QuestionRichText-more', e => e.click())
+    // dynamicQuery('.QuestionRichText-more', e => e.click())
 
     // 将知乎 logo 导航到知乎发现，因为知乎首页需要登录
-    progressiveQuery(
+    dynamicQuery(
         '[aria-label="知乎"]',
         e => (e.href = 'https://www.zhihu.com/explore')
     )
 
-    progressiveQuery(
+    dynamicQuery(
         '.AppHeader-Tabs, .AppHeader-userInfo, .QuestionButtonGroup',
         removeElement
     )
-    progressiveQuery('.SearchBar', e => (e.style['max-width'] = '80%'))
+    dynamicQuery('.SearchBar', e => (e.style['max-width'] = '80%'))
 
     // 删除回答侧边栏
-    pollingQuery('.Question-sideColumn', e => {
+    foreverQuery('.Question-sideColumn', e => {
         e.remove()
         // 将回答区域设为 90% 宽带并居中
-        progressiveQuery('.Question-main', CSSJustifyCenter)
-        progressiveQuery('.Question-mainColumn', e => (e.style.width = '90%'))
+        dynamicQuery('.Question-main', CSSJustifyCenter)
+        dynamicQuery('.Question-mainColumn', e => (e.style.width = '90%'))
     })
 
     // 隐藏关注按钮，轮询查询防止新的回答出现新的关注按钮
-    pollingQuery('.FollowButton', removeElement)
+    foreverQuery('.FollowButton', removeElement)
 
     // 轮询删除收藏、喜欢、回复按钮
-    pollingQuery('.Button--withIcon', e => {
+    foreverQuery('.Button--withIcon', e1 => {
         if (
-            e.textContent.trim().includes('收藏') ||
-            e.textContent.includes('喜欢') ||
-            e.textContent.includes('回复')
+            e1.textContent.trim().includes('收藏') ||
+            e1.textContent.includes('喜欢') ||
+            e1.textContent.includes('回复')
         ) {
-            e.remove()
+            removeElement(e1)
         }
     })
+
+    // foreverQuery('.ContentItem-actions', e => {
+    //     dynamicQuery(
+    //         '.Button--withIcon',
+    //         e1 => {
+    //             if (
+    //                 e1.textContent.trim().includes('收藏') ||
+    //                 e1.textContent.includes('喜欢') ||
+    //                 e1.textContent.includes('回复')
+    //             ) {
+    //                 removeElement(e1)
+    //             }
+    //         },
+    //         {
+    //             parent: e,
+    //         }
+    //     )
+    // })
 })
 
 // 专栏页面
 switchPath('p', () => {
-    progressiveQuery(
-        '.ColumnPageHeader-Wrapper, .Post-SideActions',
-        removeElement
-    )
+    dynamicQuery('.ColumnPageHeader-Wrapper, .Post-SideActions', removeElement)
 
-    progressiveQuery('.RichContent-actions button', (e, i) => {
+    dynamicQuery('.RichContent-actions button', (e, i) => {
         if (i > 3) {
             e.remove()
         }
     })
 
-    pollingQuery('.Button--withIcon', e => {
+    foreverQuery('.Button--withIcon', e => {
         if (e.textContent.includes('喜欢') || e.textContent.includes('回复')) {
             e.remove()
         }
@@ -85,19 +107,19 @@ switchPath('p', () => {
 // 搜索页面
 switchPath('search', () => {
     // 将知乎 logo 导航到知乎发现，因为知乎首页需要登录
-    progressiveQuery(
+    dynamicQuery(
         '[aria-label="知乎"]',
         e => (e.href = 'https://www.zhihu.com/explore')
     )
 
-    progressiveQuery('.AppHeader-Tabs, .AppHeader-userInfo', removeElement)
-    progressiveQuery('.SearchBar', e => (e.style['max-width'] = '80%'))
-    progressiveQuery('.SearchTabs-inner', CSSJustifyCenter)
+    dynamicQuery('.AppHeader-Tabs, .AppHeader-userInfo', removeElement)
+    dynamicQuery('.SearchBar', e => (e.style['max-width'] = '80%'))
+    dynamicQuery('.SearchTabs-inner', CSSJustifyCenter)
 
     // 删除侧边栏
-    progressiveQuery('.SearchMain + div', removeElement)
+    dynamicQuery('.SearchMain + div', removeElement)
 
     // 将搜索结果区域设为 90% 宽带并居中
-    progressiveQuery('.Search-container', CSSJustifyCenter)
-    progressiveQuery('.SearchMain', e => (e.style.width = '90%'))
+    dynamicQuery('.Search-container', CSSJustifyCenter)
+    dynamicQuery('.SearchMain', e => (e.style.width = '90%'))
 })

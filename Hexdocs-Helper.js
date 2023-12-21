@@ -1,8 +1,6 @@
-usbuild: {
-    const { build } = await import('usbuild')
-    await build({ ...globalConfig, match: ['https://hexdocs.pm/*'] })
-}
+import { hideElements, globalConfig, dynamicQuery } from './utils'
+import { build } from 'usbuild'
 
-import { hideElements, progressiveQuery, globalConfig } from './utils'
+await build({ ...globalConfig, match: ['https://hexdocs.pm/*'] })
 
-progressiveQuery('.sidebar-projectVersion', hideElements)
+dynamicQuery('.sidebar-projectVersion', hideElements)
