@@ -137,13 +137,22 @@ var dynamicQuery = /* @__PURE__ */ (() => {
 })();
 
 // Tarkov-Realtime-Map.js :)
-var input = document.querySelector("div.panel_top.d-flex > div > input[type=text]");
-if (input === null) {
-  dynamicQuery("div.panel_top.d-flex > div > button", (e) => setTimeout(() => e.click(), 1e3));
-  dynamicQuery("div.panel_top.d-flex > div > input[type=text]", (e) => {
-    input = e;
-  });
-}
+var input;
+dynamicQuery("div.page-content", (parent) => {
+  setInterval(() => {
+    const e = parent.querySelector("div.panel_top.d-flex > div > input[type=text]");
+    if (e === null) {
+      dynamicQuery("div.panel_top.d-flex > div > button", (e2) => setTimeout(() => e2.click(), 500), {
+        parent
+      });
+      dynamicQuery("div.panel_top.d-flex > div > input[type=text]", (e2) => {
+        input = e2;
+      }, {
+        parent
+      });
+    }
+  }, 2e3);
+});
 var eventSource = new EventSource("http://127.0.0.1:7543/map");
 eventSource.onmessage = function(event) {
   const data = event.data;
@@ -156,6 +165,5 @@ eventSource.onmessage = function(event) {
     }));
   }
 };
-eventSource.onerror = () => eventSource.close();
 
 })();

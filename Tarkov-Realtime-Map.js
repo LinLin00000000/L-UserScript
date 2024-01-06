@@ -13,21 +13,35 @@ await build(
     }
 )
 
-let input = document.querySelector(
-    'div.panel_top.d-flex > div > input[type=text]'
-)
+let input
 
-if (input === null) {
-    dynamicQuery('div.panel_top.d-flex > div > button', e =>
-        setTimeout(() => e.click(), 1000)
-    )
-    dynamicQuery('div.panel_top.d-flex > div > input[type=text]', e => {
-        input = e
-    })
-}
+dynamicQuery('div.page-content', parent => {
+    setInterval(() => {
+        const e = parent.querySelector(
+            'div.panel_top.d-flex > div > input[type=text]'
+        )
+        if (e === null) {
+            dynamicQuery(
+                'div.panel_top.d-flex > div > button',
+                e => setTimeout(() => e.click(), 500),
+                {
+                    parent,
+                }
+            )
+            dynamicQuery(
+                'div.panel_top.d-flex > div > input[type=text]',
+                e => {
+                    input = e
+                },
+                {
+                    parent,
+                }
+            )
+        }
+    }, 2000)
+})
 
 const eventSource = new EventSource('http://127.0.0.1:7543/map')
-
 eventSource.onmessage = function (event) {
     // 解析服务器发送的数据
     const data = event.data
@@ -41,5 +55,3 @@ eventSource.onmessage = function (event) {
         )
     }
 }
-
-eventSource.onerror = () => eventSource.close()
