@@ -24,6 +24,13 @@ await build(
 // 轮询检查如果出错了，则自动刷新页面
 foreverQuery('.ErrorPage', _ => location.reload())
 
+// 移除标题的私信提醒
+setInterval(() => {
+    if (document.title.includes('私信')) {
+        document.title = document.title.replace(/\(\d+ 封私信\) /, '')
+    }
+}, 1000)
+
 // 问题页面
 switchPath('question', () => {
     // 默认不展开全部回答
@@ -52,6 +59,7 @@ switchPath('question', () => {
         // 将回答区域设为 90% 宽带并居中
         dynamicQuery('.Question-main', CSSJustifyCenter)
         dynamicQuery('.Question-mainColumn', e => (e.style.width = '90%'))
+        dynamicQuery('.ListShortcut', e => (e.style.width = '100%'))
     })
 
     // 隐藏关注按钮，轮询查询防止新的回答出现新的关注按钮
