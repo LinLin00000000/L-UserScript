@@ -41,7 +41,10 @@ dynamicQuery('div.page-content', parent => {
     }, 2000)
 })
 
-const eventSource = new EventSource('http://127.0.0.1:7543/map')
+const host = '127.0.0.1'
+const port = 7543
+
+const eventSource = new EventSource(`http://${host}:${port}/map`)
 eventSource.onmessage = function (event) {
     // 解析服务器发送的数据
     const data = event.data

@@ -153,7 +153,9 @@ dynamicQuery("div.page-content", (parent) => {
     }
   }, 2e3);
 });
-var eventSource = new EventSource("http://127.0.0.1:7543/map");
+var host = "127.0.0.1";
+var port = 7543;
+var eventSource = new EventSource(`http://${host}:${port}/map`);
 eventSource.onmessage = function(event) {
   const data = event.data;
   console.log("Received message:", data);
