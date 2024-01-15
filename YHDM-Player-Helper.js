@@ -1,18 +1,16 @@
 import {
     hideElements,
     isEmptyString,
-    globalConfig,
     dynamicQuery,
     removeElement,
     addClass,
     addMessageListener,
     send,
+    mybuild,
 } from './utils'
 
-import { build } from 'usbuild'
-await build(
+await mybuild(
     {
-        ...globalConfig,
         match: ['www.mxdm9.com/*', 'danmu.yhdmjx.com/*', 'bgm.tv/*'],
         require: ['https://cdn.jsdelivr.net/npm/@unocss/runtime'],
     },

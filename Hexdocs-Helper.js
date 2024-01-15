@@ -1,6 +1,5 @@
-import { hideElements, globalConfig, dynamicQuery } from './utils'
-import { build } from 'usbuild'
+import { hideElements, dynamicQuery, mybuild } from './utils'
 
-await build({ ...globalConfig, match: ['https://hexdocs.pm/*'] })
+await mybuild({ match: ['https://hexdocs.pm/*'] })
 
 dynamicQuery('.sidebar-projectVersion', hideElements)

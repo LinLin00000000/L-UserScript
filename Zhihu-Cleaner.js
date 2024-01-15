@@ -2,15 +2,13 @@ import {
     CSSJustifyCenter,
     removeElement,
     switchPath,
-    globalConfig,
     dynamicQuery,
     foreverQuery,
+    mybuild,
 } from './utils'
 
-import { build } from 'usbuild'
-await build(
+await mybuild(
     {
-        ...globalConfig,
         match: ['https://*.zhihu.com/*'],
     },
     {
@@ -33,11 +31,6 @@ setInterval(() => {
 
 // 问题页面
 switchPath('question', () => {
-    // 默认不展开全部回答
-    // if (location.pathname.includes('/answer')) {
-    //     location.pathname = location.pathname.split('/answer')[0]
-    // }
-
     // 默认展开问题详情
     // dynamicQuery('.QuestionRichText-more', e => e.click())
 
@@ -75,24 +68,6 @@ switchPath('question', () => {
             removeElement(e1)
         }
     })
-
-    // foreverQuery('.ContentItem-actions', e => {
-    //     dynamicQuery(
-    //         '.Button--withIcon',
-    //         e1 => {
-    //             if (
-    //                 e1.textContent.trim().includes('收藏') ||
-    //                 e1.textContent.includes('喜欢') ||
-    //                 e1.textContent.includes('回复')
-    //             ) {
-    //                 removeElement(e1)
-    //             }
-    //         },
-    //         {
-    //             parent: e,
-    //         }
-    //     )
-    // })
 })
 
 // 专栏页面

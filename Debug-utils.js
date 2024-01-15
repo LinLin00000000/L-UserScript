@@ -1,7 +1,5 @@
-import { dynamicQuery, foreverQuery, globalConfig } from './utils'
-import { build } from '../usbuild'
-await build({
-    ...globalConfig,
+import { dynamicQuery, foreverQuery, globalConfig, mybuild } from './utils'
+await mybuild({
     description: "LinLin's web debug utils",
     match: ['*://*/*'],
     grant: ['unsafeWindow'],

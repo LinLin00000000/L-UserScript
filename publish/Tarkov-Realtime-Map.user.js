@@ -7,8 +7,8 @@
 // @source       https://github.com/LinLin00000000/L-UserScript
 // @description  Lin's userscript. 喵~
 // @match        https://tarkov-market.com/maps/*
-
 // ==/UserScript==
+
 
 ;(async function () {
 
@@ -136,20 +136,59 @@ var dynamicQuery = /* @__PURE__ */ (() => {
   };
 })();
 
-// Tarkov-Realtime-Map.js :)
+// 这是力量的代价，不可避免 :)
+function __usbuild() {
+}
+
+// utils.ts
+var globalConfig = {
+  namespace: "L-UserScript",
+  version: "0.1.0",
+  author: "Lin",
+  license: "MIT License",
+  source: "https://github.com/LinLin00000000/L-UserScript",
+  description: "Lin's userscript. 喵~"
+};
+function mybuild(...args) {
+  return __usbuild({
+    ...globalConfig,
+    ...args[0]
+  }, args[1]);
+}
+
+// Tarkov-Realtime-Map.js
+await mybuild(
+  {
+    match: ["https://tarkov-market.com/maps/*"]
+  },
+  {
+    // dev: true,
+    outdir: "publish"
+  }
+);
 var input;
 dynamicQuery("div.page-content", (parent) => {
   setInterval(() => {
-    const e = parent.querySelector("div.panel_top.d-flex > div > input[type=text]");
+    const e = parent.querySelector(
+      "div.panel_top.d-flex > div > input[type=text]"
+    );
     if (e === null) {
-      dynamicQuery("div.panel_top.d-flex > div > button", (e2) => setTimeout(() => e2.click(), 500), {
-        parent
-      });
-      dynamicQuery("div.panel_top.d-flex > div > input[type=text]", (e2) => {
-        input = e2;
-      }, {
-        parent
-      });
+      dynamicQuery(
+        "div.panel_top.d-flex > div > button",
+        (e2) => setTimeout(() => e2.click(), 500),
+        {
+          parent
+        }
+      );
+      dynamicQuery(
+        "div.panel_top.d-flex > div > input[type=text]",
+        (e2) => {
+          input = e2;
+        },
+        {
+          parent
+        }
+      );
     }
   }, 2e3);
 });
@@ -161,10 +200,9 @@ eventSource.onmessage = function(event) {
   console.log("Received message:", data);
   if (input) {
     input.value = data;
-    input.dispatchEvent(new Event("input", {
-      bubbles: true,
-      cancelable: true
-    }));
+    input.dispatchEvent(
+      new Event("input", { bubbles: true, cancelable: true })
+    );
   }
 };
 

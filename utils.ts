@@ -1,4 +1,5 @@
 export { dynamicQuery, foreverQuery } from './dynamicQuery'
+import { build } from '../usbuild'
 
 /**
  * @description Group an array by a function
@@ -100,6 +101,13 @@ export const globalConfig = {
     license: 'MIT License',
     source: 'https://github.com/LinLin00000000/L-UserScript',
     description: "Lin's userscript. 喵~",
+}
+
+export function mybuild(...args: Parameters<typeof build>) {
+    return build({
+        ...globalConfig,
+        ...args[0],
+    }, args[1])
 }
 
 export function addClass(e: Element, cs: string) {

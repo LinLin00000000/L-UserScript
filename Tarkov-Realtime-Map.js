@@ -1,10 +1,7 @@
-import { dynamicQuery, globalConfig } from './utils'
+import { dynamicQuery, mybuild } from './utils'
 
-import { build } from 'usbuild'
-
-await build(
+await mybuild(
     {
-        ...globalConfig,
         match: ['https://tarkov-market.com/maps/*'],
     },
     {

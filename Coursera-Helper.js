@@ -1,8 +1,6 @@
-import { globalConfig } from './utils'
-import { build } from 'usbuild'
-await build(
+import { mybuild } from './utils'
+await mybuild(
     {
-        ...globalConfig,
         match: ['https://www.coursera.org/*'],
     },
     {
