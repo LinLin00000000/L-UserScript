@@ -11,7 +11,7 @@ import {
 
 await mybuild(
     {
-        match: ['www.mxdm9.com/*', 'danmu.yhdmjx.com/*', 'bgm.tv/*'],
+        match: ['www.mxdm6.com/*', 'danmu.yhdmjx.com/*', 'bgm.tv/*'],
         require: ['https://cdn.jsdelivr.net/npm/@unocss/runtime'],
     },
     {
@@ -25,42 +25,6 @@ const BGM_URL_MAP = 'bgm-url'
 const selectors = ['#HMRichBox', '[data-balloon="画中画"]']
 
 dynamicQuery(selectors, hideElements)
-
-// 套壳网站
-if (location.host.includes('www.mxdm9.com')) {
-    dynamicQuery('.scroll-content > .selected', e => {
-        const url = e?.nextElementSibling?.href
-        if (!isEmptyString(url)) {
-            addMessageListener((message, e) => {
-                if (message === 'nextVideo') {
-                    window.location.href = url
-                }
-            }, 'https://danmu.yhdmjx.com')
-        }
-    })
-
-    dynamicQuery('.fixed_right_bar', removeElement)
-
-    dynamicQuery('.player-block', e => {
-        const iframe = document.createElement('iframe')
-        iframe.src =
-            JSON.parse(localStorage.getItem(BGM_URL_MAP))?.[vod_name] ??
-            `https://bgm.tv/subject_search/${vod_name}?cat=2`
-
-        addClass(iframe, 'w-full h-[1000px] mt-8')
-        e.appendChild(iframe)
-
-        addMessageListener((message, e) => {
-            console.log(message)
-            if (message[BGM_URL_MAP]) {
-                const bgmURLMap =
-                    JSON.parse(localStorage.getItem(BGM_URL_MAP)) ?? {}
-                bgmURLMap[vod_name] = message[BGM_URL_MAP]
-                localStorage.setItem(BGM_URL_MAP, JSON.stringify(bgmURLMap))
-            }
-        }, 'https://bgm.tv')
-    })
-}
 
 // yhdm 播放源
 if (location.host.includes('danmu.yhdmjx.com')) {
@@ -97,7 +61,8 @@ if (location.host.includes('danmu.yhdmjx.com')) {
     }
 }
 
-if (location.host.includes('bgm.tv')) {
+// bangumi
+else if (location.host.includes('bgm.tv')) {
     dynamicQuery('h1.nameSingle', e => {
         const saveButton = document.createElement('button')
         saveButton.textContent = 'Save URL 📥'
@@ -113,5 +78,41 @@ if (location.host.includes('bgm.tv')) {
             send({ [BGM_URL_MAP]: e.firstElementChild.firstElementChild.href })
             location.href = url
         }
+    })
+}
+
+// 套壳网站
+else {
+    dynamicQuery('.scroll-content > .selected', e => {
+        const url = e?.nextElementSibling?.href
+        if (!isEmptyString(url)) {
+            addMessageListener((message, e) => {
+                if (message === 'nextVideo') {
+                    window.location.href = url
+                }
+            }, 'https://danmu.yhdmjx.com')
+        }
+    })
+
+    dynamicQuery('.fixed_right_bar', removeElement)
+
+    dynamicQuery('.player-block', e => {
+        const iframe = document.createElement('iframe')
+        iframe.src =
+            JSON.parse(localStorage.getItem(BGM_URL_MAP))?.[vod_name] ??
+            `https://bgm.tv/subject_search/${vod_name}?cat=2`
+
+        addClass(iframe, 'w-full h-[1000px] mt-8')
+        e.appendChild(iframe)
+
+        addMessageListener((message, e) => {
+            console.log(message)
+            if (message[BGM_URL_MAP]) {
+                const bgmURLMap =
+                    JSON.parse(localStorage.getItem(BGM_URL_MAP)) ?? {}
+                bgmURLMap[vod_name] = message[BGM_URL_MAP]
+                localStorage.setItem(BGM_URL_MAP, JSON.stringify(bgmURLMap))
+            }
+        }, 'https://bgm.tv')
     })
 }
