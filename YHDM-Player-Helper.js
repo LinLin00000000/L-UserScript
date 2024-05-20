@@ -75,8 +75,12 @@ else if (location.host.includes('bgm.tv')) {
     dynamicQuery('#browserItemList', e => {
         if (e.childElementCount === 1) {
             const url = e.firstElementChild.firstElementChild.href
-            send({ [BGM_URL_MAP]: e.firstElementChild.firstElementChild.href })
-            location.href = url
+            if (!isEmptyString(url)) {
+                send({
+                    [BGM_URL_MAP]: e.firstElementChild.firstElementChild.href,
+                })
+                location.href = url
+            }
         }
     })
 }
