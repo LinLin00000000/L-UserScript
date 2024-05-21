@@ -11,7 +11,20 @@ import {
 
 await mybuild(
     {
-        match: ['www.mxdm6.com/*', 'danmu.yhdmjx.com/*', 'bgm.tv/*'],
+        match: [
+            'www.mxdm.com/*',
+            'www.mxdm1.com/*',
+            'www.mxdm2.com/*',
+            'www.mxdm3.com/*',
+            'www.mxdm4.com/*',
+            'www.mxdm5.com/*',
+            'www.mxdm6.com/*',
+            'www.mxdm7.com/*',
+            'www.mxdm8.com/*',
+            'www.mxdm9.com/*',
+            'danmu.yhdmjx.com/*',
+            'bgm.tv/*',
+        ],
         require: ['https://cdn.jsdelivr.net/npm/@unocss/runtime'],
     },
     {
@@ -81,6 +94,13 @@ else if (location.host.includes('bgm.tv')) {
                 })
                 location.href = url
             }
+        }
+    })
+
+    // 自动暗黑模式
+    dynamicQuery('#toggleTheme', e => {
+        if (e.text.includes('关灯')) {
+            e.click()
         }
     })
 }
