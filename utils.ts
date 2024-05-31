@@ -113,3 +113,22 @@ export function mybuild(...args: Parameters<typeof build>) {
 export function addClass(e: Element, cs: string) {
     cs.split(' ').forEach(c => e.classList.add(c))
 }
+
+export function textQuery(text: string): HTMLElement[] {
+    // 创建一个 XPath 表达式来查找包含指定文本的元素
+    const xpath = `//*[contains(text(), '${text}')]`
+
+    // 使用 document.evaluate 执行 XPath 表达式
+    const result = document.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null)
+
+    // 创建一个数组来存储找到的所有元素
+    const elements: HTMLElement[] = []
+    for (let i = 0; i < result.snapshotLength; i++) {
+        const elem = result.snapshotItem(i)
+        if (elem instanceof HTMLElement) {
+            elements.push(elem)
+        }
+    }
+
+    return elements
+}
