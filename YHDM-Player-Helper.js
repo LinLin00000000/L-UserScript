@@ -34,6 +34,17 @@ await mybuild(
             'www.mxdm8.cc/*',
             'www.mxdm9.cc/*',
 
+            'www.mxdm.fans',
+            'www.mxdm1.fans',
+            'www.mxdm2.fans',
+            'www.mxdm3.fans',
+            'www.mxdm4.fans',
+            'www.mxdm5.fans',
+            'www.mxdm6.fans',
+            'www.mxdm7.fans',
+            'www.mxdm8.fans',
+            'www.mxdm9.fans',
+
             'danmu.yhdmjx.com/*',
             'bgm.tv/*',
         ],
