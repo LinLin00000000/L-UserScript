@@ -147,7 +147,7 @@ else {
         const iframe = document.createElement('iframe')
         iframe.src =
             JSON.parse(localStorage.getItem(BGM_URL_MAP))?.[vod_name] ??
-            `https://bgm.tv/subject_search/${vod_name}?cat=2`
+            `https://bgm.tv/subject_search/${removeSuffix(vod_name)}?cat=2`
 
         addClass(iframe, 'w-full h-[1000px] mt-8')
         e.appendChild(iframe)
@@ -162,4 +162,9 @@ else {
             }
         }, 'https://bgm.tv')
     })
+}
+
+// 疑似 bangumi 搜索引擎bug
+function removeSuffix(str) {
+    return str.endsWith('版') ? str.slice(0, -1) : str
 }
