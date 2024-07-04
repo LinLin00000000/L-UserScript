@@ -24,8 +24,8 @@ foreverQuery('.ErrorPage', _ => location.reload())
 
 // 移除标题的私信提醒
 setInterval(() => {
-    if (document.title.includes('私信')) {
-        document.title = document.title.replace(/\(\d+ 封私信\) /, '')
+    if (document.title.includes('消息')) {
+        document.title = document.title.replace(/\(\d+ 条消息\) /, '')
     }
 }, 1000)
 
