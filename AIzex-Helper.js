@@ -11,7 +11,7 @@ await mybuild(
 
 if (location.host.includes('panter.aizex.cn')) {
     setTimeout(() => {
-        if (redirectToHomePage) {
+        if (window.redirectToHomePage) {
             redirectToHomePage()
         }
     }, 1000)
