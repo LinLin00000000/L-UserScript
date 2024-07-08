@@ -1,4 +1,10 @@
-import { dynamicQuery, isEmptyString, mybuild, textQuery } from './utils'
+import {
+    dynamicQuery,
+    isEmptyString,
+    mybuild,
+    textQuery,
+    onUrlChange,
+} from './utils'
 
 await mybuild(
     {
@@ -51,28 +57,4 @@ if (location.host.includes('panter.aizex.cn')) {
             })
         }
     }, 1000)
-}
-
-function onUrlChange(callback) {
-    // 初始调用，检查当前 URL 是否符合条件
-    callback(window.location.href)
-
-    // 监听 `popstate` 事件
-    window.addEventListener('popstate', () => {
-        callback(window.location.href)
-    })
-
-    // 覆盖 `pushState` 和 `replaceState` 方法，以便监听 URL 变化
-    const originalPushState = history.pushState
-    const originalReplaceState = history.replaceState
-
-    history.pushState = function () {
-        originalPushState.apply(history, arguments)
-        callback(window.location.href)
-    }
-
-    history.replaceState = function () {
-        originalReplaceState.apply(history, arguments)
-        callback(window.location.href)
-    }
 }
