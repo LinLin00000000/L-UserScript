@@ -11,7 +11,7 @@ await mybuild(
         match: ['panter.aizex.cn/*', 'aizex.net/*'],
     },
     {
-        dev: true,
+        // dev: true,
     }
 )
 
