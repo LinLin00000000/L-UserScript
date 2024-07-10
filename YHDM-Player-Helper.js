@@ -75,7 +75,8 @@ dynamicQuery(selectors, hideElements)
 
 // yhdm 播放源
 if (location.host.includes('danmu.yhdmjx.com')) {
-    console.log = console.table
+    // TypeError: Cannot set property log of [object Object] which has only a getter
+    // console.log = console.table
 
     // 鼠标中键全屏
     document.addEventListener('mousedown', function (event) {
