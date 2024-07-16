@@ -22,11 +22,9 @@ await mybuild(
 // 轮询检查如果出错了，则自动刷新页面
 foreverQuery('.ErrorPage', _ => location.reload())
 
-// 移除标题的私信提醒
+// 移除标题的私信、消息提醒
 setInterval(() => {
-    if (document.title.includes('消息')) {
-        document.title = document.title.replace(/\(\d+ 条消息\) /, '')
-    }
+    document.title = document.title.replace(/\(.*\) /, '')
 }, 1000)
 
 // 问题页面
