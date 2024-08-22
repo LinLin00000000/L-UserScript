@@ -73,5 +73,6 @@ if (location.href.includes(mainPageUrl)) {
   )
 
   // 检测鼠标在 2s 内是否有移动，如果没有则关闭页面
-  listenerWithTimeout(() => window.close(), 2000, 'mousemove')
+  // 这个功能还有待商榷
+  // listenerWithTimeout(() => window.close(), 2000, 'mousemove')
 }
