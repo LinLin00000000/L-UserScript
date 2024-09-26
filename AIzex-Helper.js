@@ -10,9 +10,9 @@ import {
 
 const mainPageUrl = 'https://aizex.net/'
 const gptPoolUrl = 'https://aizex.net/plusPool'
-const gptChatUrl = 'https://linlin.aizex.cn/'
+const gptChatUrl = 'https://arc.aizex.me/'
 const claudePoolUrl = 'https://aizex.net/proPool'
-const claudeChatUrl = 'https://linlin-c.aizex.cn/'
+const claudeChatUrl = 'https://arc-c.aizex.me/'
 
 await mybuild(
   {
