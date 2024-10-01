@@ -1,14 +1,46 @@
-import { dynamicQuery, foreverQuery, mybuild } from './utils'
+import { dynamicQuery, foreverQuery, hideElements, mybuild } from './utils'
 await mybuild(
   {
-    match: ['http*://*.xsnvshen.co/album/*', 'http*://*.xsnvshen.com/album/*'], // 更新 match 匹配的 URL
+    match: [
+      'http*://www.xsnvshen.co/album/*',
+      'http*://www.xsnvshen.com/album/*',
+    ],
   },
   {
     dev: false,
     outdir: 'pub',
   }
 )
+// 创建一个 <style> 元素
+const style = document.createElement('style')
 
-foreverQuery('ul.gallery li.swl-item', e => {
-  e.style.width = '100%'
+// 添加覆盖样式
+style.innerHTML = `
+    .showlists li {
+        width: 100% !important;
+        height: auto !important;
+        padding: 0 !important;
+        border-right: none !important;
+        border-bottom: none !important;
+    }
+
+    .swl-item .swi-hd {
+        display: initial !important;
+        width: auto !important;
+        height: auto !important;
+    }
+
+    .showlists img {
+        width: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+    }
+`
+
+// 将样式添加到 <head> 中
+document.head.appendChild(style)
+
+dynamicQuery('.workContentWrapper', hideElements)
+dynamicQuery('.showlists', e => {
+  e.style.display = 'block'
 })

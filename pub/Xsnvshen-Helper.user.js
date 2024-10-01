@@ -6,8 +6,8 @@
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
 // @description  Lin's userscript. 喵~
-// @match        http*://*.xsnvshen.co/album/*
-// @match        http*://*.xsnvshen.com/album/*
+// @match        http*://www.xsnvshen.co/album/*
+// @match        http*://www.xsnvshen.com/album/*
 // ==/UserScript==
 
 
@@ -138,11 +138,23 @@ var dynamicQuery = /* @__PURE__ */ (() => {
 })();
 var foreverQuery = (s, f, o) => dynamicQuery(s, f, { once: false, ...o });
 
+// ll-utils.js
+var ll = dynamicQuery;
+ll.dynamicQuery = dynamicQuery;
+ll.foreverQuery = foreverQuery;
+ll.textQuery = textQuery;
+ll.test = () => {
+  console.log("这是 LinLin 的开发工具箱");
+};
+
 // 这是力量的代价，不可避免 :)
 function __usbuild() {
 }
 
 // utils.ts
+function hideElements(element) {
+  element.style.display = "none";
+}
 var globalConfig = {
   namespace: "L-UserScript",
   version: "0.1.0",
@@ -160,20 +172,64 @@ function mybuild(...args) {
     args[1]
   );
 }
+function textQuery(text) {
+  const xpath = `//*[contains(text(), '${text}')]`;
+  const result = document.evaluate(
+    xpath,
+    document,
+    null,
+    XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+    null
+  );
+  const elements = [];
+  for (let i = 0; i < result.snapshotLength; i++) {
+    const elem = result.snapshotItem(i);
+    if (elem instanceof HTMLElement) {
+      elements.push(elem);
+    }
+  }
+  return elements;
+}
 
 // Xsnvshen-Helper.js
 await mybuild(
   {
-    match: ["http*://*.xsnvshen.co/album/*", "http*://*.xsnvshen.com/album/*"]
-    // 更新 match 匹配的 URL
+    match: [
+      "http*://www.xsnvshen.co/album/*",
+      "http*://www.xsnvshen.com/album/*"
+    ]
   },
   {
     dev: false,
     outdir: "pub"
   }
 );
-foreverQuery("ul.gallery li.swl-item", (e) => {
-  e.style.width = "100%";
+var style = document.createElement("style");
+style.innerHTML = `
+    .showlists li {
+        width: 100% !important;
+        height: auto !important;
+        padding: 0 !important;
+        border-right: none !important;
+        border-bottom: none !important;
+    }
+
+    .swl-item .swi-hd {
+        display: initial !important;
+        width: auto !important;
+        height: auto !important;
+    }
+
+    .showlists img {
+        width: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+    }
+`;
+document.head.appendChild(style);
+dynamicQuery(".workContentWrapper", hideElements);
+dynamicQuery(".showlists", (e) => {
+  e.style.display = "block";
 });
 
 })();
