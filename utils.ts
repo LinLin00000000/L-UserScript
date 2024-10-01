@@ -210,3 +210,17 @@ export function extractUniqueHosts(urls: string[]): string[] {
 
   return Array.from(uniqueHosts).map(host => `${host}/*`)
 }
+
+export function removeAllEventListeners(element) {
+  // 检查 element 是否存在父节点
+  if (element && element.parentNode) {
+    // 克隆当前元素
+    const clonedElement = element.cloneNode(true)
+    // 用克隆后的元素替换原来的元素
+    element.parentNode.replaceChild(clonedElement, element)
+    return clonedElement // 返回克隆后的元素
+  } else {
+    console.warn('The element does not have a parent node or is null.')
+    return null
+  }
+}

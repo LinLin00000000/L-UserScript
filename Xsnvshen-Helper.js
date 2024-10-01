@@ -1,4 +1,10 @@
-import { dynamicQuery, foreverQuery, hideElements, mybuild } from './utils'
+import {
+  dynamicQuery,
+  foreverQuery,
+  hideElements,
+  mybuild,
+  removeAllEventListeners,
+} from './utils'
 await mybuild(
   {
     match: [
@@ -22,10 +28,11 @@ style.innerHTML = `
         padding: 0 !important;
         border-right: none !important;
         border-bottom: none !important;
+        cursor: default !important;
     }
 
     .swl-item .swi-hd {
-        display: initial !important;
+        display: block !important;
         width: auto !important;
         height: auto !important;
     }
@@ -40,7 +47,11 @@ style.innerHTML = `
 // 将样式添加到 <head> 中
 document.head.appendChild(style)
 
+// 默认列表模式，可以一次浏览所有图片
 dynamicQuery('.workContentWrapper', hideElements)
 dynamicQuery('.showlists', e => {
   e.style.display = 'block'
 })
+
+// 移除所有图片上的事件监听器
+$('.showlists img').off('click')

@@ -136,16 +136,6 @@ var dynamicQuery = /* @__PURE__ */ (() => {
     return removeAllProcessor;
   };
 })();
-var foreverQuery = (s, f, o) => dynamicQuery(s, f, { once: false, ...o });
-
-// ll-utils.js
-var ll = dynamicQuery;
-ll.dynamicQuery = dynamicQuery;
-ll.foreverQuery = foreverQuery;
-ll.textQuery = textQuery;
-ll.test = () => {
-  console.log("这是 LinLin 的开发工具箱");
-};
 
 // 这是力量的代价，不可避免 :)
 function __usbuild() {
@@ -172,24 +162,6 @@ function mybuild(...args) {
     args[1]
   );
 }
-function textQuery(text) {
-  const xpath = `//*[contains(text(), '${text}')]`;
-  const result = document.evaluate(
-    xpath,
-    document,
-    null,
-    XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-    null
-  );
-  const elements = [];
-  for (let i = 0; i < result.snapshotLength; i++) {
-    const elem = result.snapshotItem(i);
-    if (elem instanceof HTMLElement) {
-      elements.push(elem);
-    }
-  }
-  return elements;
-}
 
 // Xsnvshen-Helper.js
 await mybuild(
@@ -212,10 +184,11 @@ style.innerHTML = `
         padding: 0 !important;
         border-right: none !important;
         border-bottom: none !important;
+        cursor: default !important;
     }
 
     .swl-item .swi-hd {
-        display: initial !important;
+        display: block !important;
         width: auto !important;
         height: auto !important;
     }
@@ -231,5 +204,6 @@ dynamicQuery(".workContentWrapper", hideElements);
 dynamicQuery(".showlists", (e) => {
   e.style.display = "block";
 });
+$(".showlists img").off("click");
 
 })();
