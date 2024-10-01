@@ -1,7 +1,7 @@
 import { dynamicQuery, foreverQuery, mybuild } from './utils'
 await mybuild(
   {
-    match: ['https://www.xsnvshen.co/album/*'], // 更新 match 匹配的 URL
+    match: ['http*://*.xsnvshen.co/album/*', 'http*://*.xsnvshen.com/album/*'], // 更新 match 匹配的 URL
   },
   {
     dev: false,

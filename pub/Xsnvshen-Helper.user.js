@@ -6,7 +6,8 @@
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
 // @description  Lin's userscript. 喵~
-// @match        https://www.xsnvshen.co/album/*
+// @match        http*://*.xsnvshen.co/album/*
+// @match        http*://*.xsnvshen.com/album/*
 // ==/UserScript==
 
 
@@ -163,7 +164,7 @@ function mybuild(...args) {
 // Xsnvshen-Helper.js
 await mybuild(
   {
-    match: ["https://www.xsnvshen.co/album/*"]
+    match: ["http*://*.xsnvshen.co/album/*", "http*://*.xsnvshen.com/album/*"]
     // 更新 match 匹配的 URL
   },
   {
