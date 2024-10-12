@@ -224,3 +224,36 @@ export function removeAllEventListeners(element) {
     return null
   }
 }
+
+export function simulateKeyPress(key: string) {
+  // 键值和 keyCode 的映射表
+  const keyToKeyCode = {
+    ArrowLeft: 37,
+    ArrowRight: 39,
+    Enter: 13,
+    // 可以根据需要继续添加更多键值对
+  }
+
+  // 如果找不到对应的 keyCode，则抛出错误
+  if (!(key in keyToKeyCode)) {
+    console.error(`Unsupported key: ${key}`)
+    return
+  }
+
+  // 模拟键盘事件的函数，减少重复代码
+  function dispatchKeyEvent(type: string) {
+    const event = new KeyboardEvent(type, {
+      key: key,
+      code: key,
+      keyCode: keyToKeyCode[key],
+      // which: keyToKeyCode[key],
+      bubbles: true,
+      cancelable: true,
+    })
+    document.dispatchEvent(event)
+  }
+
+  // 触发 keydown 和 keyup 事件
+  dispatchKeyEvent('keydown')
+  dispatchKeyEvent('keyup')
+}
