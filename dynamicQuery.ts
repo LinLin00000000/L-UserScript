@@ -107,7 +107,7 @@ export const dynamicQuery = (() => {
    */
   return function (
     selector: string | string[],
-    callback: processNode = console.log,
+    callback: processNode = (node: Element) => console.log(node),
     options: {
       parent?: ParentNode
       once?: boolean
