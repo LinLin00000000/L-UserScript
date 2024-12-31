@@ -217,15 +217,15 @@ else {
     }, 'https://bgm.tv')
   })
 
-  dynamicQuery('#playleft iframe', video => {
-    video.addEventListener('mouseenter', () => {
-      document.body.style.overflow = 'hidden' // 禁用滚动
-    })
+  // dynamicQuery('#playleft iframe', video => {
+  //   video.addEventListener('mouseenter', () => {
+  //     document.body.style.overflow = 'hidden' // 禁用滚动
+  //   })
 
-    video.addEventListener('mouseleave', () => {
-      document.body.style.overflow = '' // 恢复滚动
-    })
-  })
+  //   video.addEventListener('mouseleave', () => {
+  //     document.body.style.overflow = '' // 恢复滚动
+  //   })
+  // })
 }
 
 // 疑似 bangumi 搜索引擎bug
