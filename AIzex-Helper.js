@@ -10,7 +10,7 @@ import {
 
 const mainPageUrl = 'https://aizex.net/'
 const gptPoolUrl = 'https://aizex.net/plusPool'
-const gptChatUrl = 'https://arc.aizex.me/'
+const gptChatUrl = 'https://leopard.aizex.me/'
 const claudePoolUrl = 'https://aizex.net/proPool'
 const claudeChatUrl = 'https://arc-c.aizex.me/'
 
