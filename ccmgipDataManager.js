@@ -1,18 +1,5 @@
-import { dynamicQuery, mybuild, simulateKeyPress } from './utils'
-await mybuild(
-  {
-    match: ['https://art.ccmgip.com/*'],
-  },
-  {
-    dev: true,
-  }
-)
-
-// import { dataManagerInit } from './ccmgipDataManager'
-// const dataManagerInit = await import('./ccmgipDataManager')
-
 const API_URL =
-  'https://data.ccmgip.linlin.world/raw_collections_data?select=id,name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000'
+  'https://data.ccmgip.linlin.world/raw_collections_data?select=name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000'
 const STORAGE_KEY = 'ccmgip_collection_data'
 const REFRESH_KEY = 'ccmgip_refresh_status'
 const DEFAULT_REFRESH_INTERVAL = 60 // 默认刷新间隔（秒）
@@ -20,6 +7,7 @@ const MIN_REFRESH_INTERVAL = 10 // 最小刷新间隔（秒）
 const CHECK_FREQUENCY = 5000 // 检查数据是否需要刷新的频率（毫秒）
 const MAX_RETRY = 3 // 最大重试次数
 
+// const window = unsafeWindow || {} // 确保 window 对象存在
 // 初始化全局 window 对象
 window.ccmgipData = {
   data: [],
@@ -184,7 +172,7 @@ async function checkAndUpdateData() {
 }
 
 // 初始化脚本
-function dataManagerInit() {
+export function dataManagerInit() {
   // 从 localStorage 加载初始数据
   updateGlobalObject()
   // 执行初始检查
@@ -207,5 +195,3 @@ function dataManagerInit() {
   })
   console.log('[CCMGIP] 数据收集管理器初始化完成')
 }
-
-dataManagerInit()
