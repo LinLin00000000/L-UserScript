@@ -1,4 +1,4 @@
-import { dynamicQuery, mybuild } from './utils'
+import { dynamicQuery, mybuild, waitForElements } from './utils'
 import { dataManagerInit } from './ccmgipDataManager'
 
 await mybuild(
@@ -98,20 +98,4 @@ if (
       }
     )
   })
-
-  // 等待页面元素加载完成
-  function waitForElements(selector, callback, maxTries = 10, interval = 1000) {
-    let tries = 0
-    const checkExist = setInterval(function () {
-      const elements = document.querySelectorAll(selector)
-      tries++
-      if (elements.length > 0) {
-        clearInterval(checkExist)
-        callback(elements)
-      } else if (tries >= maxTries) {
-        clearInterval(checkExist)
-        console.log('元素未找到: ' + selector)
-      }
-    }, interval)
-  }
 }
