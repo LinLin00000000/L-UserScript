@@ -76,15 +76,16 @@ if (
         // 按比率排序
         processedItems.sort((a, b) => a.ratioValue - b.ratioValue)
 
+        // 先添加回馈积分提示(如果存在)
+        const subtitleElement = document.querySelector(
+          '[class^="donationActivity_subtitle"]'
+        )
+
         // 清空容器并按新顺序添加项目
         while (container.firstChild) {
           container.removeChild(container.firstChild)
         }
 
-        // 先添加回馈积分提示(如果存在)
-        const subtitleElement = document.querySelector(
-          '[class^="donationActivity_subtitle"]'
-        )
         if (subtitleElement) {
           container.appendChild(subtitleElement.cloneNode(true))
         }
