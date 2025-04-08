@@ -1,20 +1,45 @@
 const API_URL =
-  'https://data.ccmgip.linlin.world/raw_collections_data?select=name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000'
+  'https://data.ccmgip.linlin.world/raw_collections_data?select=id,name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000'
 const STORAGE_KEY = 'ccmgip_collection_data'
 const REFRESH_KEY = 'ccmgip_refresh_status'
-const DEFAULT_REFRESH_INTERVAL = 60 // 默认刷新间隔（秒）
+const DEFAULT_REFRESH_INTERVAL = 60 * 3 // 默认刷新间隔（秒）
 const MIN_REFRESH_INTERVAL = 10 // 最小刷新间隔（秒）
 const CHECK_FREQUENCY = 5000 // 检查数据是否需要刷新的频率（毫秒）
 const MAX_RETRY = 3 // 最大重试次数
 
-// const window = unsafeWindow || {} // 确保 window 对象存在
-// 初始化全局 window 对象
-window.ccmgipData = {
-  data: [],
-  lastUpdatedAt: null,
-  refreshInterval: DEFAULT_REFRESH_INTERVAL,
-  isLoading: false,
-  error: null,
+// 初始化脚本
+export function dataManagerInit() {
+  // 初始化全局 window 对象
+  window.ccmgipData = {
+    data: [],
+    lastUpdatedAt: null,
+    refreshInterval: DEFAULT_REFRESH_INTERVAL,
+    isLoading: false,
+    error: null,
+    updateData,
+  }
+
+  // 从 localStorage 加载初始数据
+  updateGlobalObject()
+  // 执行初始检查
+  checkAndUpdateData()
+  // 设置周期性检查
+  setInterval(checkAndUpdateData, CHECK_FREQUENCY)
+  // 处理可见性变化以暂停当标签页不可见时
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      // 页面重新可见时检查更新
+      checkAndUpdateData()
+    }
+  })
+  // 监听来自其他标签页的存储变化
+  window.addEventListener('storage', event => {
+    if (event.key === STORAGE_KEY && event.newValue) {
+      console.log('[CCMGIP] 数据从另一个标签页更新')
+      updateGlobalObject(JSON.parse(event.newValue))
+    }
+  })
+  console.log('[CCMGIP] 数据收集管理器初始化完成')
 }
 
 // 用重试机制获取数据的函数
@@ -121,13 +146,9 @@ function setRefreshStatus(isRefreshing) {
 function updateGlobalObject(data = null) {
   const storedData = data || getStoredData()
   if (storedData) {
-    window.ccmgipData = {
-      data: storedData.data,
-      lastUpdatedAt: storedData.lastUpdatedAt,
-      refreshInterval: storedData.refreshInterval,
-      isLoading: window.ccmgipData.isLoading,
-      error: window.ccmgipData.error,
-    }
+    window.ccmgipData.data = storedData.data
+    window.ccmgipData.lastUpdatedAt = storedData.lastUpdatedAt
+    window.ccmgipData.refreshInterval = storedData.refreshInterval
   }
 }
 
@@ -147,6 +168,10 @@ async function checkAndUpdateData() {
     updateGlobalObject()
     return
   }
+  await updateData()
+}
+
+async function updateData() {
   try {
     window.ccmgipData.isLoading = true
     setRefreshStatus(true)
@@ -154,13 +179,13 @@ async function checkAndUpdateData() {
     const refreshInterval =
       getStoredData()?.refreshInterval || DEFAULT_REFRESH_INTERVAL
     const updatedData = storeData(data, refreshInterval)
-    window.ccmgipData = {
-      data: updatedData.data,
-      lastUpdatedAt: updatedData.lastUpdatedAt,
-      refreshInterval: updatedData.refreshInterval,
-      isLoading: false,
-      error: null,
-    }
+
+    window.ccmgipData.data = updatedData.data
+    window.ccmgipData.lastUpdatedAt = updatedData.lastUpdatedAt
+    window.ccmgipData.refreshInterval = updatedData.refreshInterval
+    window.ccmgipData.isLoading = false
+    window.ccmgipData.error = null
+
     console.log('[CCMGIP] 数据成功更新并存储')
   } catch (error) {
     window.ccmgipData.error = error.message
@@ -169,29 +194,4 @@ async function checkAndUpdateData() {
     window.ccmgipData.isLoading = false
     setRefreshStatus(false)
   }
-}
-
-// 初始化脚本
-export function dataManagerInit() {
-  // 从 localStorage 加载初始数据
-  updateGlobalObject()
-  // 执行初始检查
-  checkAndUpdateData()
-  // 设置周期性检查
-  setInterval(checkAndUpdateData, CHECK_FREQUENCY)
-  // 处理可见性变化以暂停当标签页不可见时
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      // 页面重新可见时检查更新
-      checkAndUpdateData()
-    }
-  })
-  // 监听来自其他标签页的存储变化
-  window.addEventListener('storage', event => {
-    if (event.key === STORAGE_KEY && event.newValue) {
-      console.log('[CCMGIP] 数据从另一个标签页更新')
-      updateGlobalObject(JSON.parse(event.newValue))
-    }
-  })
-  console.log('[CCMGIP] 数据收集管理器初始化完成')
 }
