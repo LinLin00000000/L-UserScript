@@ -210,12 +210,7 @@ function dataManagerInit() {
 }
 async function fetchData(retryCount = 0) {
   try {
-    const response = await fetch(API_URL, {
-      headers: {
-        Accept: "application/json",
-        Prefer: "return=representation"
-      }
-    });
+    const response = await fetch(API_URL);
     if (!response.ok) {
       throw new Error(`数据获取失败: ${response.statusText}`);
     }
@@ -298,9 +293,12 @@ function setRefreshStatus(isRefreshing) {
 function updateGlobalObject(data = null) {
   const storedData = data || getStoredData();
   if (storedData) {
-    window.ccmgipData.data = storedData.data;
-    window.ccmgipData.lastUpdatedAt = storedData.lastUpdatedAt;
-    window.ccmgipData.refreshInterval = storedData.refreshInterval;
+    window.ccmgipData = {
+      ...window.ccmgipData,
+      data: storedData.data,
+      lastUpdatedAt: storedData.lastUpdatedAt,
+      refreshInterval: storedData.refreshInterval
+    };
   }
 }
 async function checkAndUpdateData() {
@@ -370,8 +368,16 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity"
             console.log(`未找到藏品数据: ${name}`);
             return;
           }
+          const pointElement = item.querySelector(
+            '[class^="donationActivity_point"]'
+          );
+          if (!pointElement)
+            return;
+          const pointValue = parseFloat(
+            pointElement.textContent.replace(/[^0-9.]/g, "")
+          );
           const onSalePrice = nftData.on_sale_lowest_price / 100;
-          const l2Price = nftData.l2_lowest_price / 100;
+          const l2Price = Math.max(nftData.l2_lowest_price, pointValue) / 100;
           const pointsElement = item.querySelector(
             '[class^="donationActivity_points"]'
           );
@@ -505,6 +511,68 @@ var replaceBlindDetails = {
     {
       name: "蜀山行旅图",
       probability: 5
+    }
+  ],
+  "019569e1-4d7f-4965-b3e7-b68c2ce8f30a": [
+    {
+      name: "树色平远图",
+      probability: 15
+    },
+    {
+      name: "鱼石图",
+      probability: 15
+    },
+    {
+      name: "汉宫观潮图",
+      probability: 15
+    },
+    {
+      name: "花鸟图",
+      probability: 15
+    },
+    {
+      name: "明皇弈棋图",
+      probability: 10
+    },
+    {
+      name: "忒PANDA·赛博",
+      probability: 0.1
+    },
+    {
+      name: "雪景寒林图",
+      probability: 1
+    },
+    {
+      name: "青铜面具",
+      probability: 1
+    },
+    {
+      name: "隶书道德经",
+      probability: 1
+    },
+    {
+      name: "青铜扭头跪坐人像",
+      probability: 1
+    },
+    {
+      name: "猴猫图",
+      probability: 1
+    },
+    {
+      name: "鼓吹骑俑",
+      probability: 3.1
+    },
+    {
+      name: "蜀川胜概图",
+      probability: 3
+    },
+    {
+      name: "虎钮如意云纹青玉握",
+      probability: 3
+    },
+    {
+      name: "双凤瓜棱盒",
+      probability: 16
     }
   ]
 };
