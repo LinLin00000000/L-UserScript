@@ -40,17 +40,8 @@ if (
             return
           }
 
-          const pointElement = item.querySelector(
-            '[class^="donationActivity_point"]'
-          )
-          if (!pointElement) return
-
-          const pointValue = parseFloat(
-            pointElement.textContent.replace(/[^0-9.]/g, '')
-          )
-
           const onSalePrice = nftData.on_sale_lowest_price / 100
-          const l2Price = Math.max(nftData.l2_lowest_price, pointValue) / 100
+
           const pointsElement = item.querySelector(
             '[class^="donationActivity_points"]'
           )
@@ -58,6 +49,16 @@ if (
           if (pointsElement) {
             let ratio = '无法计算'
             let ratioValue = Infinity
+
+            const pointValue = parseFloat(
+              pointsElement.textContent.replace(/[^0-9.]/g, '')
+            )
+            if (isNaN(pointValue)) {
+              console.log(`无法解析积分值: ${pointsElement.textContent}`)
+              return
+            }
+
+            const l2Price = pointValue / 100
 
             if (l2Price && l2Price > 0) {
               ratioValue = onSalePrice / l2Price
