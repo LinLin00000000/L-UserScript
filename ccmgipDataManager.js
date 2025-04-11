@@ -45,12 +45,7 @@ export function dataManagerInit() {
 // 用重试机制获取数据的函数
 async function fetchData(retryCount = 0) {
   try {
-    const response = await fetch(API_URL, {
-      headers: {
-        Accept: 'application/json',
-        Prefer: 'return=representation',
-      },
-    })
+    const response = await fetch(API_URL)
     if (!response.ok) {
       throw new Error(`数据获取失败: ${response.statusText}`)
     }
@@ -146,9 +141,12 @@ function setRefreshStatus(isRefreshing) {
 function updateGlobalObject(data = null) {
   const storedData = data || getStoredData()
   if (storedData) {
-    window.ccmgipData.data = storedData.data
-    window.ccmgipData.lastUpdatedAt = storedData.lastUpdatedAt
-    window.ccmgipData.refreshInterval = storedData.refreshInterval
+    window.ccmgipData = {
+      ...window.ccmgipData,
+      data: storedData.data,
+      lastUpdatedAt: storedData.lastUpdatedAt,
+      refreshInterval: storedData.refreshInterval,
+    }
   }
 }
 
