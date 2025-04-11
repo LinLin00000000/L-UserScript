@@ -4,6 +4,7 @@ import { dataManagerInit } from './ccmgipDataManager'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
+    version: '0.1.1',
   },
   {
     dev: false,
