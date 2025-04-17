@@ -206,3 +206,6 @@ export const dynamicQuery = (() => {
  */
 export const foreverQuery = (s, f, o) =>
   dynamicQuery(s, f, { once: false, ...o })
+
+export const dynamicQueryAsync = (selector, options) =>
+  new Promise(resolve => dynamicQuery(selector, resolve, options))
