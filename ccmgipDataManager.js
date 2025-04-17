@@ -2,6 +2,7 @@ import { waitForObject } from './utils'
 
 const DEFAULT_REFRESH_INTERVAL = 60 * 3 // 默认刷新间隔（秒）
 const MAX_RETRY = 3 // 最大重试次数
+let ccmgipData
 
 function getStorageKey(objectName) {
   return `ccmgip_data_${objectName}`
@@ -73,7 +74,7 @@ async function isRefreshNeeded(objectName) {
   const storedData = await getStoredData(objectName)
   if (!storedData) return true // 没有数据，需要获取
 
-  const state = window.ccmgipData[objectName]
+  const state = ccmgipData[objectName]
   if (!state) return true // 状态未初始化
 
   const now = Date.now()
@@ -118,21 +119,19 @@ async function setRefreshStatus(objectName, isRefreshing) {
   }
 }
 
-// 更新指定对象的 window.ccmgipData[objectName]
+// 更新指定对象的 ccmgipData[objectName]
 async function updateGlobalObject(objectName, data = null) {
   // 使用提供的数据或从存储中获取
   const storedData = data || (await getStoredData(objectName))
-  if (storedData && window.ccmgipData[objectName]) {
-    const state = window.ccmgipData[objectName]
-    const hadDataBefore = state.data && state.data.length > 0 // 检查更新前是否有数据
+  if (storedData && ccmgipData[objectName]) {
+    const state = ccmgipData[objectName]
     state.data = storedData.data
     state.lastUpdatedAt = storedData.lastUpdatedAt
     // 只有在存储的数据中有 refreshInterval 时才更新它，避免覆盖 manageDataSource 设置的值
     if (storedData.refreshInterval !== undefined) {
       state.refreshInterval = storedData.refreshInterval
     }
-    // 如果数据是从存储事件更新的，并且之前没有数据或数据已更新，触发回调
-    if (data && typeof state._onDataLoad === 'function') {
+    if (typeof state._onDataLoad === 'function') {
       try {
         state._onDataLoad(state)
       } catch (callbackError) {
@@ -142,10 +141,10 @@ async function updateGlobalObject(objectName, data = null) {
         )
       }
     }
-  } else if (window.ccmgipData[objectName]) {
+  } else if (ccmgipData[objectName]) {
     // 如果没有存储数据，确保状态存在但数据为空
-    window.ccmgipData[objectName].data = []
-    window.ccmgipData[objectName].lastUpdatedAt = null
+    ccmgipData[objectName].data = []
+    ccmgipData[objectName].lastUpdatedAt = null
   }
 }
 
@@ -153,22 +152,17 @@ async function updateGlobalObject(objectName, data = null) {
  * 初始化并管理一个数据源
  * @param {object} config 配置对象
  * @param {string} config.apiUrl 数据源的 API URL
- * @param {string} config.objectName 挂载到 window.ccmgipData 的属性名
+ * @param {string} config.objectName 挂载到 ccmgipData 的属性名
  * @param {number} [config.refreshInterval=DEFAULT_REFRESH_INTERVAL] 刷新间隔（秒）
  * @param {function(object):void} [config.onDataLoad] 数据成功加载（来自网络或缓存）后执行的回调函数，接收 state 对象作为参数
  */
-export function useDataSource(config) {
+export async function useDataSource(config) {
   const {
     apiUrl,
     objectName,
     refreshInterval = DEFAULT_REFRESH_INTERVAL,
     onDataLoad,
   } = config
-
-  if (!apiUrl || !objectName) {
-    console.error('[CCMGIP] useDataSource 参数不足: 需要 apiUrl 和 objectName')
-    return
-  }
 
   // 计算检查频率 (刷新间隔的 1/6，最小 5 秒，最大 60 秒)
   const checkFrequency = Math.min(
@@ -178,7 +172,7 @@ export function useDataSource(config) {
 
   // 为此数据源创建特定的更新和检查函数
   const updateDataForObject = async () => {
-    const state = window.ccmgipData[objectName]
+    const state = ccmgipData[objectName]
     if (!state) return // 如果状态被移除则停止
 
     try {
@@ -243,7 +237,7 @@ export function useDataSource(config) {
   }
 
   // 初始化此数据源的状态对象
-  window.ccmgipData[objectName] = {
+  ccmgipData[objectName] = {
     data: [],
     lastUpdatedAt: null,
     refreshInterval: refreshInterval,
@@ -256,36 +250,15 @@ export function useDataSource(config) {
     _onDataLoad: onDataLoad, // 存储回调引用
   }
 
-  // 从 GM 存储加载初始数据并执行初始检查
-  ;(async () => {
-    const state = window.ccmgipData[objectName]
-    await updateGlobalObject(objectName)
-    // 如果从存储加载了数据，并且有回调，则触发回调
-    if (
-      state &&
-      state.data &&
-      state.data.length > 0 &&
-      typeof onDataLoad === 'function'
-    ) {
-      try {
-        onDataLoad(state)
-      } catch (callbackError) {
-        console.error(
-          `[${objectName}] 执行 onDataLoad 回调 (初始加载) 时出错:`,
-          callbackError
-        )
-      }
-    }
-    // 无论是否从缓存加载了数据，都进行一次检查（可能需要立即刷新）
-    await checkAndUpdateDataForObject()
-  })()
+  // 立即检查并更新数据
+  await checkAndUpdateDataForObject()
 
   // 设置周期性检查
   // 清除可能存在的旧定时器（如果重复调用 useDataSource）
-  if (window.ccmgipData[objectName]._intervalId) {
-    clearInterval(window.ccmgipData[objectName]._intervalId)
+  if (ccmgipData[objectName]._intervalId) {
+    clearInterval(ccmgipData[objectName]._intervalId)
   }
-  window.ccmgipData[objectName]._intervalId = setInterval(
+  ccmgipData[objectName]._intervalId = setInterval(
     () =>
       checkAndUpdateDataForObject().catch(err =>
         console.error(`[${objectName}] 定时检查出错:`, err)
@@ -304,13 +277,13 @@ function globalListen() {
     if (!document.hidden) {
       console.log('[CCMGIP] 页面变为可见，检查所有数据源')
       // 页面重新可见时检查所有数据源
-      for (const objectName in window.ccmgipData) {
+      for (const objectName in ccmgipData) {
         if (
-          window.ccmgipData.hasOwnProperty(objectName) &&
-          window.ccmgipData[objectName]._checkAndUpdate
+          ccmgipData.hasOwnProperty(objectName) &&
+          ccmgipData[objectName]._checkAndUpdate
         ) {
           // 调用异步函数，处理潜在错误
-          window.ccmgipData[objectName]
+          ccmgipData[objectName]
             ._checkAndUpdate()
             .catch(err =>
               console.error(`[${objectName}] 可见性触发检查出错:`, err)
@@ -329,7 +302,7 @@ function globalListen() {
         const match = key.match(/^ccmgip_data_(.+)$/)
         if (match) {
           const objectName = match[1]
-          if (window.ccmgipData[objectName]) {
+          if (ccmgipData[objectName]) {
             console.log(`[${objectName}] 数据从另一个实例更新 (GM Storage)`)
             // newValue 已经是 GM_setValue 存储的对象
             await updateGlobalObject(objectName, newValue) // 使用新数据更新全局对象
@@ -340,9 +313,8 @@ function globalListen() {
   )
 }
 
-export function dataManagerInit() {
-  // 初始化全局 window 对象
-  window.ccmgipData = window.ccmgipData || {}
+export async function dataManagerInit() {
+  ccmgipData = globalThis.ccmgipData = globalThis.ccmgipData || {}
 
   globalListen()
 
@@ -364,4 +336,7 @@ export function dataManagerInit() {
   })
 }
 
-export const useNfts = () => waitForObject('ccmgipData.nft.data')
+export const useNfts = () =>
+  waitForObject('ccmgipData.nft.data', {
+    requireNonEmptyArray: true,
+  })
