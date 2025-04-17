@@ -364,3 +364,74 @@ export function waitForObject(
     check() // 立即执行一次检查，避免首次等待 interval
   })
 }
+
+// Declare Greasemonkey/Tampermonkey functions for TypeScript
+declare global {
+  function GM_getValue(key: string, defaultValue?: any): any;
+  function GM_setValue(key: string, value: any): void;
+}
+
+
+export function useStore(key: string, defaultValue = null) {
+  // 检查 GM 函数是否存在
+  if (
+    typeof GM_getValue !== 'undefined' &&
+    typeof GM_setValue !== 'undefined'
+  ) {
+    // 油猴环境
+    console.log(`检测到油猴环境，键 '${key}' 将使用 GM 函数持久化。`)
+    const store = {
+      get value() {
+        return GM_getValue(key, defaultValue)
+      },
+      set value(newValue) {
+        GM_setValue(key, newValue)
+      },
+    }
+    return store
+  } else if (typeof localStorage !== 'undefined') {
+    // 非油猴环境，尝试使用 localStorage
+    console.warn(`未检测到 GM 函数，键 '${key}' 将尝试使用 localStorage。`)
+    const store = {
+      get value() {
+        const storedValue = localStorage.getItem(key)
+        if (storedValue === null) {
+          return defaultValue
+        }
+        try {
+          // 尝试解析 JSON，因为 localStorage 只能存字符串
+          return JSON.parse(storedValue)
+        } catch (e) {
+          // 如果解析失败，可能存的是普通字符串
+          console.error(`读取键 '${key}' 的 localStorage 值失败，解析错误：`, e)
+          return storedValue // 或者返回 defaultValue
+        }
+      },
+      set value(newValue) {
+        try {
+          localStorage.setItem(key, JSON.stringify(newValue))
+        } catch (e) {
+          console.error(`写入键 '${key}' 到 localStorage 时出错：`, e)
+        }
+      },
+    }
+    return store
+  } else {
+    // GM 函数和 localStorage 都不可用
+    console.error('警告：GM 函数和 localStorage 均不可用，数据将无法持久化！')
+    // 提供一个内存中的回退，但数据不会持久化
+    let inMemoryValue = defaultValue
+    return {
+      get value() {
+        console.warn(`存储不可用，键 '${key}' 读取的是内存中的临时值。`)
+        return inMemoryValue
+      },
+      set value(newValue) {
+        console.warn(
+          `存储不可用，键 '${key}' 的值仅保存在内存中，刷新后将丢失。`
+        )
+        inMemoryValue = newValue
+      },
+    }
+  }
+}
