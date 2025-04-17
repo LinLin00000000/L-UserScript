@@ -1,4 +1,4 @@
-export { dynamicQuery, foreverQuery } from './dynamicQuery'
+export * from './dynamicQuery'
 import { build } from '../usbuild'
 
 /**
@@ -82,7 +82,7 @@ export function send(message: string, options: any = {}) {
 }
 
 export function isNil(value) {
-  return value === undefined || value === null
+  return value === null || typeof value === 'undefined'
 }
 
 export function isEmptyString(str) {
@@ -277,4 +277,83 @@ export function waitForElements(
       console.log('元素未找到: ' + selector)
     }
   }, interval)
+}
+
+/**
+ * 等待一个嵌套的对象属性存在且不为 null/undefined (使用 setInterval)。
+ * @param {string} pathString 点分隔的对象路径 (例如 "a.b.c")。
+ * @param {object} [options] 配置选项。
+ * @param {number} [options.timeout=10000] 最大等待时间（毫秒）。设置为 0 表示不超时。
+ * @param {number} [options.interval=100] 检查间隔时间（毫秒）。
+ * @param {boolean} [options.requireNonEmptyArray=true] 如果目标对象是数组，是否要求其不为空。
+ * @returns {Promise<any>} 一个 Promise，在找到满足条件的对象时解析为该对象，超时则拒绝。
+ */
+export function waitForObject(
+  pathString: string,
+  options: {
+    timeout?: number
+    interval?: number
+    requireNonEmptyArray?: boolean
+  } = {}
+): Promise<any> {
+  const {
+    timeout = 10000,
+    interval = 100,
+    requireNonEmptyArray = true,
+  } = options
+
+  return new Promise((resolve, reject) => {
+    const pathParts = pathString.split('.')
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+    let intervalHandle: ReturnType<typeof setInterval> | null = null
+
+    const clearTimers = () => {
+      if (timeoutHandle) clearTimeout(timeoutHandle)
+      if (intervalHandle) clearInterval(intervalHandle)
+    }
+
+    const check = () => {
+      let current = globalThis // 从全局作用域开始查找
+      let exists = true
+      for (const part of pathParts) {
+        if (isNil(current) || isNil(current[part])) {
+          exists = false
+          break
+        }
+        current = current[part]
+      }
+
+      if (exists) {
+        // 检查是否需要非空数组
+        if (
+          requireNonEmptyArray &&
+          Array.isArray(current) &&
+          current.length === 0
+        ) {
+          // 是数组但为空，且要求非空，则继续等待
+          return
+        }
+
+        // 对象存在且满足所有条件
+        clearTimers()
+        resolve(current) // 解析 Promise
+      }
+      // 如果对象未找到，或者找到但未满足额外条件，setInterval 会在下一个间隔后再次调用 check
+    }
+
+    // 设置超时
+    if (timeout > 0) {
+      timeoutHandle = setTimeout(() => {
+        console.error(
+          `waitForObject: Timeout waiting for object "${pathString}" after ${timeout}ms`
+        )
+        clearTimers() // 停止轮询
+        reject(new Error(`Timeout waiting for object: ${pathString}`))
+      }, timeout)
+    }
+
+    // 开始轮询
+    intervalHandle = setInterval(check, interval)
+    check() // 立即执行一次检查，避免首次等待 interval
+  })
 }
