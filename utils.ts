@@ -283,36 +283,34 @@ export function waitForElements(
  * 等待一个嵌套的对象属性存在且不为 null/undefined (使用 setInterval)。
  * @param {string} pathString 点分隔的对象路径 (例如 "a.b.c")。
  * @param {object} [options] 配置选项。
- * @param {number} [options.timeout=10000] 最大等待时间（毫秒）。设置为 0 表示不超时。
+ * @param {number} [options.maxTries=100] 最大尝试次数。设置为 0 或负数表示无限次尝试。
  * @param {number} [options.interval=100] 检查间隔时间（毫秒）。
  * @param {boolean} [options.requireNonEmptyArray=true] 如果目标对象是数组，是否要求其不为空。
- * @returns {Promise<any>} 一个 Promise，在找到满足条件的对象时解析为该对象，超时则拒绝。
+ * @returns {Promise<any>} 一个 Promise，在找到满足条件的对象时解析为该对象，达到最大尝试次数则拒绝。
  */
 export function waitForObject(
   pathString: string,
   options: {
-    timeout?: number
+    maxTries?: number
     interval?: number
     requireNonEmptyArray?: boolean
   } = {}
 ): Promise<any> {
   const {
-    timeout = 10000,
+    maxTries = 100,
     interval = 100,
     requireNonEmptyArray = true,
   } = options
 
   return new Promise((resolve, reject) => {
     const pathParts = pathString.split('.')
-    let timeoutHandle: ReturnType<typeof setTimeout> | null = null
-    let intervalHandle: ReturnType<typeof setInterval> | null = null
+    let tries = 0
+    let intervalHandle: ReturnType<typeof setInterval> | undefined = undefined
 
-    const clearTimers = () => {
-      if (timeoutHandle) clearTimeout(timeoutHandle)
-      if (intervalHandle) clearInterval(intervalHandle)
-    }
+    const clearTimers = () => clearInterval(intervalHandle)
 
     const check = () => {
+      tries++
       let current = globalThis // 从全局作用域开始查找
       let exists = true
       for (const part of pathParts) {
@@ -330,26 +328,24 @@ export function waitForObject(
           Array.isArray(current) &&
           current.length === 0
         ) {
-          // 是数组但为空，且要求非空，则继续等待
-          return
+          // 是数组但为空，且要求非空，则继续等待（如果未达到最大尝试次数）
+        } else {
+          // 对象存在且满足所有条件
+          clearTimers()
+          resolve(current) // 解析 Promise
+          return // 成功找到，退出检查
         }
-
-        // 对象存在且满足所有条件
-        clearTimers()
-        resolve(current) // 解析 Promise
       }
-      // 如果对象未找到，或者找到但未满足额外条件，setInterval 会在下一个间隔后再次调用 check
-    }
 
-    // 设置超时
-    if (timeout > 0) {
-      timeoutHandle = setTimeout(() => {
+      // 检查是否达到最大尝试次数 (仅当 maxTries > 0 时)
+      if (maxTries > 0 && tries >= maxTries) {
         console.error(
-          `waitForObject: Timeout waiting for object "${pathString}" after ${timeout}ms`
+          `waitForObject: Failed to find object "${pathString}" after ${maxTries} tries.`
         )
         clearTimers() // 停止轮询
-        reject(new Error(`Timeout waiting for object: ${pathString}`))
-      }, timeout)
+        reject(new Error(`Max tries reached waiting for object: ${pathString}`))
+      }
+      // 如果对象未找到或未满足条件，并且未达到最大尝试次数，setInterval 会在下一个间隔后再次调用 check
     }
 
     // 开始轮询
