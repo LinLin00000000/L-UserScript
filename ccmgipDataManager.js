@@ -1,3 +1,5 @@
+import { waitForObject } from './utils'
+
 const DEFAULT_REFRESH_INTERVAL = 60 * 3 // 默认刷新间隔（秒）
 const MAX_RETRY = 3 // 最大重试次数
 
@@ -37,20 +39,21 @@ async function fetchData(apiUrl, objectName, retryCount = 0) {
   }
 }
 
-// 从 localStorage 获取指定对象存储数据的函数
-function getStoredData(objectName) {
+// 从 GM 存储获取指定对象存储数据的函数
+async function getStoredData(objectName) {
   const storageKey = getStorageKey(objectName)
   try {
-    const storedData = localStorage.getItem(storageKey)
-    return storedData ? JSON.parse(storedData) : null
+    // GM_getValue 直接返回值，如果未找到则返回 undefined
+    const storedData = await GM_getValue(storageKey, null)
+    return storedData // 假设 GM_setValue 直接存储对象结构
   } catch (error) {
-    console.error(`[${objectName}] 解析存储数据时出错:`, error)
+    console.error(`[${objectName}] 获取 GM 存储数据时出错:`, error)
     return null
   }
 }
 
-// 将指定对象的数据存储到 localStorage 的函数
-function storeData(objectName, data, refreshInterval) {
+// 将指定对象的数据存储到 GM 存储的函数
+async function storeData(objectName, data, refreshInterval) {
   const storageKey = getStorageKey(objectName)
   const storageData = {
     data: data,
@@ -58,17 +61,16 @@ function storeData(objectName, data, refreshInterval) {
     refreshInterval: refreshInterval,
   }
   try {
-    localStorage.setItem(storageKey, JSON.stringify(storageData))
+    await GM_setValue(storageKey, storageData) // 直接存储对象
   } catch (e) {
-    console.error(`[${objectName}] 存储数据时出错:`, e)
-    // 可选：处理存储已满等情况
+    console.error(`[${objectName}] 存储数据到 GM 时出错:`, e)
   }
   return storageData
 }
 
 // 检查指定对象是否需要刷新数据的函数
-function isRefreshNeeded(objectName) {
-  const storedData = getStoredData(objectName)
+async function isRefreshNeeded(objectName) {
+  const storedData = await getStoredData(objectName)
   if (!storedData) return true // 没有数据，需要获取
 
   const state = window.ccmgipData[objectName]
@@ -85,50 +87,60 @@ function isRefreshNeeded(objectName) {
 }
 
 // 检查是否有其他标签页正在刷新指定对象数据的函数
-function isAnotherTabRefreshing(objectName) {
+async function isAnotherTabRefreshing(objectName) {
   const refreshKey = getRefreshKey(objectName)
   try {
-    const refreshStatus = localStorage.getItem(refreshKey)
+    const refreshStatus = await GM_getValue(refreshKey, null)
     if (!refreshStatus) return false
-    const status = JSON.parse(refreshStatus)
     // 检查刷新操作是否已经过时（例如，超过 30 秒）
-    if (Date.now() - status.timestamp > 30000) {
-      localStorage.removeItem(refreshKey) // 清理过时的状态
+    if (Date.now() - refreshStatus.timestamp > 30000) {
+      await GM_deleteValue(refreshKey) // 清理过时的状态
       return false
     }
     return true
   } catch (error) {
-    console.error(`[${objectName}] 检查刷新状态时出错:`, error)
+    console.error(`[${objectName}] 检查 GM 刷新状态时出错:`, error)
     // 出错时假设没有其他标签页在刷新，以允许当前标签页尝试
     return false
   }
 }
 
 // 设置指定对象的刷新状态
-function setRefreshStatus(objectName, isRefreshing) {
+async function setRefreshStatus(objectName, isRefreshing) {
   const refreshKey = getRefreshKey(objectName)
   if (isRefreshing) {
-    localStorage.setItem(
-      refreshKey,
-      JSON.stringify({
-        timestamp: Date.now(),
-        tabId: Math.random().toString(36).substring(2), // 简单的唯一标识符
-      })
-    )
+    await GM_setValue(refreshKey, {
+      timestamp: Date.now(),
+      tabId: Math.random().toString(36).substring(2), // 简单的唯一标识符
+    })
   } else {
-    localStorage.removeItem(refreshKey)
+    await GM_deleteValue(refreshKey)
   }
 }
 
 // 更新指定对象的 window.ccmgipData[objectName]
-function updateGlobalObject(objectName, data = null) {
-  const storedData = data || getStoredData(objectName)
+async function updateGlobalObject(objectName, data = null) {
+  // 使用提供的数据或从存储中获取
+  const storedData = data || (await getStoredData(objectName))
   if (storedData && window.ccmgipData[objectName]) {
-    window.ccmgipData[objectName].data = storedData.data
-    window.ccmgipData[objectName].lastUpdatedAt = storedData.lastUpdatedAt
+    const state = window.ccmgipData[objectName]
+    const hadDataBefore = state.data && state.data.length > 0 // 检查更新前是否有数据
+    state.data = storedData.data
+    state.lastUpdatedAt = storedData.lastUpdatedAt
     // 只有在存储的数据中有 refreshInterval 时才更新它，避免覆盖 manageDataSource 设置的值
     if (storedData.refreshInterval !== undefined) {
-      window.ccmgipData[objectName].refreshInterval = storedData.refreshInterval
+      state.refreshInterval = storedData.refreshInterval
+    }
+    // 如果数据是从存储事件更新的，并且之前没有数据或数据已更新，触发回调
+    if (data && typeof state._onDataLoad === 'function') {
+      try {
+        state._onDataLoad(state)
+      } catch (callbackError) {
+        console.error(
+          `[${objectName}] 执行 onDataLoad 回调 (来自存储事件) 时出错:`,
+          callbackError
+        )
+      }
     }
   } else if (window.ccmgipData[objectName]) {
     // 如果没有存储数据，确保状态存在但数据为空
@@ -137,21 +149,24 @@ function updateGlobalObject(objectName, data = null) {
   }
 }
 
-// --- 主管理函数 ---
-
 /**
  * 初始化并管理一个数据源
- * @param {string} apiUrl 数据源的 API URL
- * @param {string} objectName 挂载到 window.ccmgipData 的属性名
- * @param {number} [refreshInterval=DEFAULT_REFRESH_INTERVAL] 刷新间隔（秒）
+ * @param {object} config 配置对象
+ * @param {string} config.apiUrl 数据源的 API URL
+ * @param {string} config.objectName 挂载到 window.ccmgipData 的属性名
+ * @param {number} [config.refreshInterval=DEFAULT_REFRESH_INTERVAL] 刷新间隔（秒）
+ * @param {function(object):void} [config.onDataLoad] 数据成功加载（来自网络或缓存）后执行的回调函数，接收 state 对象作为参数
  */
-export function useDataSource(
-  apiUrl,
-  objectName,
-  refreshInterval = DEFAULT_REFRESH_INTERVAL
-) {
+export function useDataSource(config) {
+  const {
+    apiUrl,
+    objectName,
+    refreshInterval = DEFAULT_REFRESH_INTERVAL,
+    onDataLoad,
+  } = config
+
   if (!apiUrl || !objectName) {
-    console.error('[CCMGIP] 参数不足')
+    console.error('[CCMGIP] useDataSource 参数不足: 需要 apiUrl 和 objectName')
     return
   }
 
@@ -169,11 +184,11 @@ export function useDataSource(
     try {
       state.isLoading = true
       state.error = null // 清除之前的错误
-      setRefreshStatus(objectName, true)
+      await setRefreshStatus(objectName, true)
 
       const fetchedData = await fetchData(apiUrl, objectName)
       const currentRefreshInterval = state.refreshInterval // 使用当前状态中的刷新间隔
-      const updatedStorageData = storeData(
+      const updatedStorageData = await storeData(
         objectName,
         fetchedData,
         currentRefreshInterval
@@ -182,16 +197,29 @@ export function useDataSource(
       // 更新全局状态
       state.data = updatedStorageData.data
       state.lastUpdatedAt = updatedStorageData.lastUpdatedAt
-      // state.refreshInterval 已在 storeData 中设置到 storage，并在 updateGlobalObject 中同步回来
+      // refreshInterval 已在 storeData 中设置到 storage，并在 updateGlobalObject 中同步回来
       state.isLoading = false
+
+      // 如果提供了回调函数，则执行它
+      if (typeof onDataLoad === 'function') {
+        try {
+          onDataLoad(state)
+        } catch (callbackError) {
+          console.error(
+            `[${objectName}] 执行 onDataLoad 回调 (fetch 成功) 时出错:`,
+            callbackError
+          )
+        }
+      }
 
       console.log(`[${objectName}] 数据成功更新并存储`)
     } catch (error) {
       state.error = error.message
       console.error(`[${objectName}] 数据更新失败:`, error)
+      if (state) state.error = error.message // 确保错误反映在状态中
     } finally {
-      state.isLoading = false
-      setRefreshStatus(objectName, false)
+      if (state) state.isLoading = false // 确保 isLoading 被重置
+      await setRefreshStatus(objectName, false)
     }
   }
 
@@ -200,14 +228,14 @@ export function useDataSource(
     if (document.hidden) {
       return
     }
-    // 如果其他标签页正在刷新此数据，跳过更新，但确保本地状态与 localStorage 同步
-    if (isAnotherTabRefreshing(objectName)) {
-      updateGlobalObject(objectName) // 从 localStorage 更新状态
+    // 如果其他标签页正在刷新此数据，跳过更新，但确保本地状态与 GM 存储同步
+    if (await isAnotherTabRefreshing(objectName)) {
+      await updateGlobalObject(objectName) // 从 GM 存储更新状态
       return
     }
-    // 如果不需要刷新数据，跳过更新，但确保本地状态与 localStorage 同步
-    if (!isRefreshNeeded(objectName)) {
-      updateGlobalObject(objectName) // 从 localStorage 更新状态
+    // 如果不需要刷新数据，跳过更新，但确保本地状态与 GM 存储同步
+    if (!(await isRefreshNeeded(objectName))) {
+      await updateGlobalObject(objectName) // 从 GM 存储更新状态
       return
     }
     // 执行更新
@@ -225,21 +253,43 @@ export function useDataSource(
     updateData: updateDataForObject, // 提供手动更新的方法
     _checkAndUpdate: checkAndUpdateDataForObject, // 内部检查函数引用
     _intervalId: null, // 用于存储 setInterval 的 ID
+    _onDataLoad: onDataLoad, // 存储回调引用
   }
 
-  // 从 localStorage 加载初始数据
-  updateGlobalObject(objectName)
-
-  // 执行初始检查
-  checkAndUpdateDataForObject()
+  // 从 GM 存储加载初始数据并执行初始检查
+  ;(async () => {
+    const state = window.ccmgipData[objectName]
+    await updateGlobalObject(objectName)
+    // 如果从存储加载了数据，并且有回调，则触发回调
+    if (
+      state &&
+      state.data &&
+      state.data.length > 0 &&
+      typeof onDataLoad === 'function'
+    ) {
+      try {
+        onDataLoad(state)
+      } catch (callbackError) {
+        console.error(
+          `[${objectName}] 执行 onDataLoad 回调 (初始加载) 时出错:`,
+          callbackError
+        )
+      }
+    }
+    // 无论是否从缓存加载了数据，都进行一次检查（可能需要立即刷新）
+    await checkAndUpdateDataForObject()
+  })()
 
   // 设置周期性检查
-  // 清除可能存在的旧定时器（如果重复调用 manageDataSource）
+  // 清除可能存在的旧定时器（如果重复调用 useDataSource）
   if (window.ccmgipData[objectName]._intervalId) {
     clearInterval(window.ccmgipData[objectName]._intervalId)
   }
   window.ccmgipData[objectName]._intervalId = setInterval(
-    checkAndUpdateDataForObject,
+    () =>
+      checkAndUpdateDataForObject().catch(err =>
+        console.error(`[${objectName}] 定时检查出错:`, err)
+      ), // 为异步检查添加错误处理
     checkFrequency
   )
 
@@ -259,35 +309,35 @@ function globalListen() {
           window.ccmgipData.hasOwnProperty(objectName) &&
           window.ccmgipData[objectName]._checkAndUpdate
         ) {
-          window.ccmgipData[objectName]._checkAndUpdate()
+          // 调用异步函数，处理潜在错误
+          window.ccmgipData[objectName]
+            ._checkAndUpdate()
+            .catch(err =>
+              console.error(`[${objectName}] 可见性触发检查出错:`, err)
+            )
         }
       }
     }
   })
 
-  // 监听来自其他标签页的存储变化
-  window.addEventListener('storage', event => {
-    if (event.key && event.newValue) {
-      // 检查是否是受管理的数据存储键
-      const match = event.key.match(/^ccmgip_data_(.+)$/)
-      if (match) {
-        const objectName = match[1]
-        if (window.ccmgipData[objectName]) {
-          console.log(`[${objectName}] 数据从另一个标签页更新`)
-          try {
-            const newData = JSON.parse(event.newValue)
-            updateGlobalObject(objectName, newData) // 使用新数据更新全局对象
-          } catch (error) {
-            console.error(
-              `[${objectName}] 解析来自 storage 事件的数据时出错:`,
-              error
-            )
+  // 监听来自其他标签页/脚本实例的 GM 存储变化
+  GM_addValueChangeListener(
+    getStorageKey('*'),
+    async (key, oldValue, newValue, remote) => {
+      // 检查更改是否由另一个标签页/实例进行
+      if (remote) {
+        const match = key.match(/^ccmgip_data_(.+)$/)
+        if (match) {
+          const objectName = match[1]
+          if (window.ccmgipData[objectName]) {
+            console.log(`[${objectName}] 数据从另一个实例更新 (GM Storage)`)
+            // newValue 已经是 GM_setValue 存储的对象
+            await updateGlobalObject(objectName, newValue) // 使用新数据更新全局对象
           }
         }
       }
-      // 可选：也可以监听 refresh 状态的变化，但这通常不是必需的
     }
-  })
+  )
 }
 
 export function dataManagerInit() {
@@ -298,9 +348,20 @@ export function dataManagerInit() {
 
   console.log('[CCMGIP] 数据管理器核心已加载')
 
-  useDataSource(
-    'https://data.ccmgip.linlin.world/raw_collections_data?select=id,name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000',
-    'nft',
-    60 * 3
-  )
+  useDataSource({
+    apiUrl:
+      'https://data.ccmgip.linlin.world/raw_collections_data?select=id,name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000',
+    objectName: 'nft',
+    refreshInterval: 60 * 3,
+    onDataLoad: state => {
+      state.data.byName = {}
+      state.data.byId = {}
+      state.data.forEach(item => {
+        state.data.byName[item.name] = item
+        state.data.byId[item.id] = item
+      })
+    },
+  })
 }
+
+export const useNfts = () => waitForObject('ccmgipData.nft.data')
