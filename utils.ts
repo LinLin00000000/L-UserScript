@@ -291,6 +291,7 @@ export function waitForElements(
  * 等待一个嵌套的对象属性存在且不为 null/undefined (使用 setInterval)。
  * @param {string} pathString 点分隔的对象路径 (例如 "a.b.c")。
  * @param {object} [options] 配置选项。
+ * @param {object} [options.parent=globalThis] 开始查找的父对象，默认为全局作用域 (window/globalThis)。
  * @param {number} [options.maxTries=100] 最大尝试次数。设置为 0 或负数表示无限次尝试。
  * @param {number} [options.interval=100] 检查间隔时间（毫秒）。
  * @param {boolean} [options.requireNonEmptyArray=true] 如果目标对象是数组，是否要求其不为空。
@@ -299,15 +300,17 @@ export function waitForElements(
 export function waitForObject(
   pathString: string,
   options: {
+    parent?: object
     maxTries?: number
     interval?: number
     requireNonEmptyArray?: boolean
   } = {}
 ): Promise<any> {
   const {
+    parent = globalThis, // Default to globalThis if not provided
     maxTries = 100,
     interval = 100,
-    requireNonEmptyArray = true,
+    requireNonEmptyArray = false,
   } = options
 
   return new Promise((resolve, reject) => {
@@ -319,7 +322,7 @@ export function waitForObject(
 
     const check = () => {
       tries++
-      let current = globalThis // 从全局作用域开始查找
+      let current = parent // 从指定的 parent 对象开始查找
       let exists = true
       for (const part of pathParts) {
         if (isNil(current) || isNil(current[part])) {
