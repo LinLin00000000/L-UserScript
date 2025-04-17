@@ -1,3 +1,6 @@
+// 参考 https://bbs.tampermonkey.net.cn/thread-5561-1-1.html
+// 参考 https://bbs.tampermonkey.net.cn/thread-8183-1-1.html
+
 export type processNode = (node: Element) => void
 export type SelectorCallbackTuple = [string, processNode]
 
