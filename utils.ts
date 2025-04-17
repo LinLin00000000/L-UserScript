@@ -258,25 +258,33 @@ export function simulateKeyPress(key: string) {
   dispatchKeyEvent('keyup')
 }
 
-// 等待页面元素加载完成
+/**
+ * 等待页面元素加载完成。
+ * @param {string} selector CSS 选择器。
+ * @param {number} [maxTries=10] 最大尝试次数。
+ * @param {number} [interval=1000] 检查间隔时间（毫秒）。
+ * @returns {Promise<Element[]>} 一个 Promise，在找到元素时解析为 Element[]，达到最大尝试次数则拒绝。
+ */
 export function waitForElements(
   selector: string,
-  callback: (arg0: NodeListOf<any>) => void,
-  maxTries = 10,
-  interval = 1000
-) {
-  let tries = 0
-  const checkExist = setInterval(function () {
-    const elements = document.querySelectorAll(selector)
-    tries++
-    if (elements.length > 0) {
-      clearInterval(checkExist)
-      callback(elements)
-    } else if (tries >= maxTries) {
-      clearInterval(checkExist)
-      console.log('元素未找到: ' + selector)
-    }
-  }, interval)
+  maxTries = 20,
+  interval = 500
+): Promise<Element[]> {
+  return new Promise((resolve, reject) => {
+    let tries = 0
+    const checkExist = setInterval(() => {
+      const elementsNodeList = document.querySelectorAll<Element>(selector)
+      tries++
+      if (elementsNodeList.length > 0) {
+        clearInterval(checkExist)
+        resolve(Array.from(elementsNodeList)) // Convert NodeList to Array
+      } else if (tries >= maxTries) {
+        clearInterval(checkExist)
+        console.log('Element not found after max tries: ' + selector)
+        reject(new Error('Element not found: ' + selector))
+      }
+    }, interval)
+  })
 }
 
 /**
