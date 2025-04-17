@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.2.0
+// @version      0.2.1
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -187,9 +187,11 @@ function waitForElements(selector, maxTries = 20, interval = 500) {
 }
 function waitForObject(pathString, options = {}) {
   const {
+    parent = globalThis,
+    // Default to globalThis if not provided
     maxTries = 100,
     interval = 100,
-    requireNonEmptyArray = true
+    requireNonEmptyArray = false
   } = options;
   return new Promise((resolve, reject) => {
     const pathParts = pathString.split(".");
@@ -198,7 +200,7 @@ function waitForObject(pathString, options = {}) {
     const clearTimers = () => clearInterval(intervalHandle);
     const check = () => {
       tries++;
-      let current = globalThis;
+      let current = parent;
       let exists = true;
       for (const part of pathParts) {
         if (isNil(current) || isNil(current[part])) {
@@ -231,6 +233,7 @@ function waitForObject(pathString, options = {}) {
 // ccmgipDataManager.js
 var DEFAULT_REFRESH_INTERVAL = 60 * 3;
 var MAX_RETRY = 3;
+var ccmgipData;
 function getStorageKey(objectName) {
   return `ccmgip_data_${objectName}`;
 }
@@ -291,7 +294,7 @@ async function isRefreshNeeded(objectName) {
   const storedData = await getStoredData(objectName);
   if (!storedData)
     return true;
-  const state = window.ccmgipData[objectName];
+  const state = ccmgipData[objectName];
   if (!state)
     return true;
   const now = Date.now();
@@ -329,15 +332,14 @@ async function setRefreshStatus(objectName, isRefreshing) {
 }
 async function updateGlobalObject(objectName, data = null) {
   const storedData = data || await getStoredData(objectName);
-  if (storedData && window.ccmgipData[objectName]) {
-    const state = window.ccmgipData[objectName];
-    const hadDataBefore = state.data && state.data.length > 0;
+  if (storedData && ccmgipData[objectName]) {
+    const state = ccmgipData[objectName];
     state.data = storedData.data;
     state.lastUpdatedAt = storedData.lastUpdatedAt;
     if (storedData.refreshInterval !== void 0) {
       state.refreshInterval = storedData.refreshInterval;
     }
-    if (data && typeof state._onDataLoad === "function") {
+    if (typeof state._onDataLoad === "function") {
       try {
         state._onDataLoad(state);
       } catch (callbackError) {
@@ -347,28 +349,24 @@ async function updateGlobalObject(objectName, data = null) {
         );
       }
     }
-  } else if (window.ccmgipData[objectName]) {
-    window.ccmgipData[objectName].data = [];
-    window.ccmgipData[objectName].lastUpdatedAt = null;
+  } else if (ccmgipData[objectName]) {
+    ccmgipData[objectName].data = [];
+    ccmgipData[objectName].lastUpdatedAt = null;
   }
 }
-function useDataSource(config) {
+async function useDataSource(config) {
   const {
     apiUrl,
     objectName,
     refreshInterval = DEFAULT_REFRESH_INTERVAL,
     onDataLoad
   } = config;
-  if (!apiUrl || !objectName) {
-    console.error("[CCMGIP] useDataSource 参数不足: 需要 apiUrl 和 objectName");
-    return;
-  }
   const checkFrequency = Math.min(
     6e4,
     Math.max(5e3, refreshInterval * 1e3 / 6)
   );
   const updateDataForObject = async () => {
-    const state = window.ccmgipData[objectName];
+    const state = ccmgipData[objectName];
     if (!state)
       return;
     try {
@@ -421,7 +419,7 @@ function useDataSource(config) {
     }
     await updateDataForObject();
   };
-  window.ccmgipData[objectName] = {
+  ccmgipData[objectName] = {
     data: [],
     lastUpdatedAt: null,
     refreshInterval,
@@ -438,25 +436,11 @@ function useDataSource(config) {
     _onDataLoad: onDataLoad
     // 存储回调引用
   };
-  (async () => {
-    const state = window.ccmgipData[objectName];
-    await updateGlobalObject(objectName);
-    if (state && state.data && state.data.length > 0 && typeof onDataLoad === "function") {
-      try {
-        onDataLoad(state);
-      } catch (callbackError) {
-        console.error(
-          `[${objectName}] 执行 onDataLoad 回调 (初始加载) 时出错:`,
-          callbackError
-        );
-      }
-    }
-    await checkAndUpdateDataForObject();
-  })();
-  if (window.ccmgipData[objectName]._intervalId) {
-    clearInterval(window.ccmgipData[objectName]._intervalId);
+  await checkAndUpdateDataForObject();
+  if (ccmgipData[objectName]._intervalId) {
+    clearInterval(ccmgipData[objectName]._intervalId);
   }
-  window.ccmgipData[objectName]._intervalId = setInterval(
+  ccmgipData[objectName]._intervalId = setInterval(
     () => checkAndUpdateDataForObject().catch(
       (err) => console.error(`[${objectName}] 定时检查出错:`, err)
     ),
@@ -471,9 +455,9 @@ function globalListen() {
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
       console.log("[CCMGIP] 页面变为可见，检查所有数据源");
-      for (const objectName in window.ccmgipData) {
-        if (window.ccmgipData.hasOwnProperty(objectName) && window.ccmgipData[objectName]._checkAndUpdate) {
-          window.ccmgipData[objectName]._checkAndUpdate().catch(
+      for (const objectName in ccmgipData) {
+        if (ccmgipData.hasOwnProperty(objectName) && ccmgipData[objectName]._checkAndUpdate) {
+          ccmgipData[objectName]._checkAndUpdate().catch(
             (err) => console.error(`[${objectName}] 可见性触发检查出错:`, err)
           );
         }
@@ -487,7 +471,7 @@ function globalListen() {
         const match = key.match(/^ccmgip_data_(.+)$/);
         if (match) {
           const objectName = match[1];
-          if (window.ccmgipData[objectName]) {
+          if (ccmgipData[objectName]) {
             console.log(`[${objectName}] 数据从另一个实例更新 (GM Storage)`);
             await updateGlobalObject(objectName, newValue);
           }
@@ -496,8 +480,8 @@ function globalListen() {
     }
   );
 }
-function dataManagerInit() {
-  window.ccmgipData = window.ccmgipData || {};
+async function dataManagerInit() {
+  ccmgipData = globalThis.ccmgipData = globalThis.ccmgipData || {};
   globalListen();
   console.log("[CCMGIP] 数据管理器核心已加载");
   useDataSource({
@@ -514,13 +498,15 @@ function dataManagerInit() {
     }
   });
 }
-var useNfts = () => waitForObject("ccmgipData.nft.data");
+var useNfts = () => waitForObject("ccmgipData.nft.data", {
+  requireNonEmptyArray: true
+});
 
 // ccmgip-helper.js
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.2.0"
+    version: "0.2.1"
   },
   {
     dev: false,
