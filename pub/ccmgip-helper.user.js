@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.1.1
+// @version      0.2.0
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -520,7 +520,7 @@ var useNfts = () => waitForObject("ccmgipData.nft.data");
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.1.1"
+    version: "0.2.0"
   },
   {
     dev: false,
