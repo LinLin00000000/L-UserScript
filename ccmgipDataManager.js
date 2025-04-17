@@ -352,7 +352,7 @@ export function dataManagerInit() {
     apiUrl:
       'https://data.ccmgip.linlin.world/raw_collections_data?select=id,name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000',
     objectName: 'nft',
-    refreshInterval: 60 * 3,
+    refreshInterval: 60,
     onDataLoad: state => {
       state.data.byName = {}
       state.data.byId = {}
