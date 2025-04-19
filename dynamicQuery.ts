@@ -207,7 +207,7 @@ export const dynamicQuery = (() => {
  *        - allDelay?: number - 模拟 querySelectorAll 时的 debounce 延时（毫秒），默认为 1000。
  * @returns 一个函数，用于取消所有 selector，其返回值为是否在调用函数时移除了所有 selector
  */
-export const foreverQuery = (s, f, o) =>
+export const foreverQuery = (s: string | string[], f: processNode | undefined, o: { parent?: ParentNode; once?: boolean; timeout?: number; onTimeout?: () => void; all?: boolean; allDelay?: number } | undefined) =>
   dynamicQuery(s, f, { once: false, ...o })
 
 export const dynamicQueryAsync = (selector, options) =>
