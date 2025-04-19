@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.2.1
+// @version      0.3.0
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -11,6 +11,7 @@
 // @grant        GM_setValue
 // @grant        GM_deleteValue
 // @grant        GM_addValueChangeListener
+// @grant        GM_addStyle
 // ==/UserScript==
 
 
@@ -141,6 +142,7 @@ var dynamicQuery = /* @__PURE__ */ (() => {
     return removeAllProcessor;
   };
 })();
+var foreverQuery = (s, f, o) => dynamicQuery(s, f, { once: false, ...o });
 var dynamicQueryAsync = (selector, options) => new Promise((resolve) => dynamicQuery(selector, resolve, options));
 
 // 这是力量的代价，不可避免 :)
@@ -506,7 +508,7 @@ var useNfts = () => waitForObject("ccmgipData.nft.data", {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.2.1"
+    version: "0.3.0"
   },
   {
     dev: false,
@@ -836,6 +838,40 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/replaceBlind")) {
       blindContent.appendChild(profitElement);
     }
   }
+}
+GM_addStyle(`
+._helperText {
+    color: #ff9900;
+    white-space: pre-wrap;
+}
+`);
+{
+  const nfts = await useNfts();
+  foreverQuery("._normalItem_uqw8m_13", (item) => {
+    if (item.isProcessed)
+      return;
+    item.isProcessed = true;
+    const name = item.children[1].textContent.trim();
+    const nftData = nfts.byName[name];
+    if (!nftData) {
+      console.log(`未找到藏品数据: ${name}`);
+      return;
+    }
+    const onSalePrice = nftData.on_sale_lowest_price / 100;
+    const l2Price = nftData.l2_lowest_price / 100;
+    const lastestPrice = nftData.l2_lastest_price / 100;
+    const text = [
+      `市售价 ${onSalePrice}`,
+      l2Price === 0 ? "" : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
+      `最新成交价 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(
+        2
+      )} x)`
+    ].filter((e) => e !== "").join("\n");
+    item.insertAdjacentHTML(
+      "beforeend",
+      `<span class="_helperText">${text}</span>`
+    );
+  });
 }
 
 })();

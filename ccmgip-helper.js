@@ -1,6 +1,7 @@
 import {
   dynamicQuery,
   dynamicQueryAsync,
+  foreverQuery,
   mybuild,
   sleep,
   waitForElements,
@@ -11,7 +12,7 @@ import { dataManagerInit, useNfts } from './ccmgipDataManager'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.2.1',
+    version: '0.3.0',
   },
   {
     dev: false,
@@ -407,4 +408,46 @@ if (location.href.includes('https://ershisi.ccmgip.com/24solar/replaceBlind')) {
       blindContent.appendChild(profitElement)
     }
   }
+}
+
+GM_addStyle(`
+._helperText {
+    color: #ff9900;
+    white-space: pre-wrap;
+}
+`)
+
+// 藏品浏览
+{
+  const nfts = await useNfts()
+  foreverQuery('._normalItem_uqw8m_13', item => {
+    if (item.isProcessed) return
+    item.isProcessed = true
+    const name = item.children[1].textContent.trim()
+    const nftData = nfts.byName[name]
+    if (!nftData) {
+      console.log(`未找到藏品数据: ${name}`)
+      return
+    }
+    const onSalePrice = nftData.on_sale_lowest_price / 100
+    const l2Price = nftData.l2_lowest_price / 100
+    const lastestPrice = nftData.l2_lastest_price / 100
+
+    const text = [
+      `市售价 ${onSalePrice}`,
+      l2Price === 0
+        ? ''
+        : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
+      `最新成交价 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(
+        2
+      )} x)`,
+    ]
+      .filter(e => e !== '')
+      .join('\n')
+
+    item.insertAdjacentHTML(
+      'beforeend',
+      `<span class="_helperText">${text}</span>`
+    )
+  })
 }
