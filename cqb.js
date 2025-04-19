@@ -61,7 +61,6 @@ const startPolling = () => {
   const checkElementB = async () => {
     const b = [...document.querySelectorAll('[class^="_keyboard"]')].at(-1)
     const currentlyVisible = b && b.style.display === 'block'
-    console.log('轮询检查：元素 b 的可见性:', currentlyVisible)
 
     if (currentlyVisible && !isKeyboardVisible) {
       console.log('轮询检查：元素 b 变为可见 (display: block)。触发 debouncedQb...')
