@@ -164,10 +164,10 @@ export async function useDataSource(config) {
     onDataLoad,
   } = config
 
-  // 计算检查频率 (刷新间隔的 1/6，最小 5 秒，最大 60 秒)
+  // 计算检查频率 (刷新间隔的 1/2，最小 5 秒，最大 60 秒)
   const checkFrequency = Math.min(
     60000,
-    Math.max(5000, (refreshInterval * 1000) / 6)
+    Math.max(5000, (refreshInterval * 1000) / 2)
   )
 
   // 为此数据源创建特定的更新和检查函数
@@ -322,15 +322,18 @@ export async function dataManagerInit() {
 
   useDataSource({
     apiUrl:
-      'https://data.ccmgip.linlin.world/raw_collections_data?select=id,name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000',
+      'https://data.ccmgip.linlin.world/raw_collections_data?select=id,name,category_name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000',
     objectName: 'nft',
     refreshInterval: 60,
     onDataLoad: state => {
       state.data.byName = {}
       state.data.byId = {}
+      state.data.byCategoryAndName = {}
       state.data.forEach(item => {
         state.data.byName[item.name] = item
         state.data.byId[item.id] = item
+        state.data.byCategoryAndName[item.category_name] ||= {}
+        state.data.byCategoryAndName[item.category_name][item.name] = item
       })
     },
   })
