@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.7.0
+// @version      0.7.1
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -285,97 +285,102 @@ function useStore(key, defaultValue = null) {
     };
   }
 }
-function monitorApiRequests(targetBaseUrl, callbacks = {}) {
-  const { onRequest, onResponse, onError } = callbacks;
-  const getBaseUrl = (fullUrl) => {
-    try {
-      const urlObj = new URL(fullUrl, window.location.origin);
-      return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
-    } catch (e) {
-      return fullUrl.split("?")[0];
+var originalFetch = void 0;
+var originalXhrOpen = void 0;
+var originalXhrSend = void 0;
+var monitoredConfigs = [];
+var isApiMonitoringPatched = false;
+var getBaseUrl = (fullUrl) => {
+  try {
+    const urlObj = new URL(fullUrl, window.location.origin);
+    return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+  } catch (e) {
+    return fullUrl.split("?")[0];
+  }
+};
+function applyApiMonitoringPatches() {
+  if (isApiMonitoringPatched) {
+    return;
+  }
+  try {
+    originalFetch = unsafeWindow.fetch;
+    originalXhrOpen = unsafeWindow.XMLHttpRequest.prototype.open;
+    originalXhrSend = unsafeWindow.XMLHttpRequest.prototype.send;
+    if (!originalFetch || !originalXhrOpen || !originalXhrSend) {
+      throw new Error("Required native functions (fetch, XHR.open, XHR.send) not found on unsafeWindow.");
     }
-  };
-  const originalFetch = unsafeWindow.fetch;
+  } catch (error) {
+    console.error("[API Monitor] Failed to get original fetch/XHR methods from unsafeWindow:", error);
+    return;
+  }
   unsafeWindow.fetch = function(input, init = {}) {
     const requestUrl = input instanceof Request ? input.url : String(input);
     const requestBaseUrl = getBaseUrl(requestUrl);
-    const method = input instanceof Request ? input.method : init.method || "GET";
-    const headers = input instanceof Request ? input.headers : init.headers || {};
-    const body = input instanceof Request ? input.body : init.body;
+    const method = input instanceof Request ? input.method : init?.method || "GET";
+    const headers = input instanceof Request ? input.headers : init?.headers || {};
+    const body = input instanceof Request ? input.body : init?.body;
     let requestInfo = null;
-    const shouldMonitor = requestBaseUrl === targetBaseUrl;
-    if (shouldMonitor) {
+    const matchingConfigs = monitoredConfigs.filter((config) => config.targetBaseUrl === requestBaseUrl);
+    if (matchingConfigs.length > 0) {
       requestInfo = { url: requestUrl, method, headers, body, type: "fetch" };
-      if (typeof onRequest === "function") {
-        try {
-          onRequest(requestInfo);
-        } catch (e) {
-          console.error("[API Monitor] Error in onRequest (fetch):", e);
-        }
-      }
-    }
-    const fetchPromise = originalFetch.apply(this, arguments);
-    if (shouldMonitor) {
-      fetchPromise.then((response) => {
-        const clonedResponse = response.clone();
-        const processResponse = (res) => {
-          if (typeof onResponse === "function") {
-            res.text().then((textData) => {
-              let data = textData;
-              try {
-                data = JSON.parse(textData);
-              } catch (e) {
-              }
-              try {
-                onResponse({
-                  data,
-                  response: clonedResponse,
-                  type: "fetch"
-                });
-              } catch (e) {
-                console.error(
-                  "[API Monitor] Error in onResponse (fetch):",
-                  e
-                );
-              }
-            }).catch((err) => {
-              console.error(
-                "[API Monitor] Error reading fetch response text:",
-                err
-              );
-              if (typeof onError === "function") {
-                try {
-                  onError({ error: err, requestInfo, type: "fetch" });
-                } catch (e) {
-                  console.error(
-                    "[API Monitor] Error in onError (fetch response read):",
-                    e
-                  );
-                }
-              }
-            });
-          }
-        };
-        processResponse(clonedResponse);
-        return response;
-      }).catch((error) => {
-        console.error(`[API Monitor] Fetch request failed: ${requestUrl}`, error);
-        if (typeof onError === "function") {
+      matchingConfigs.forEach(({ callbacks }) => {
+        if (typeof callbacks.onRequest === "function") {
           try {
-            onError({ error, requestInfo, type: "fetch" });
+            callbacks.onRequest({ ...requestInfo });
           } catch (e) {
-            console.error(
-              "[API Monitor] Error in onError (fetch request):",
-              e
-            );
+            console.error("[API Monitor] Error in onRequest (fetch):", e);
           }
         }
       });
     }
+    const fetchPromise = originalFetch.apply(unsafeWindow, arguments);
+    if (matchingConfigs.length > 0) {
+      fetchPromise.then((response) => {
+        const clonedResponse = response.clone();
+        clonedResponse.text().then((textData) => {
+          let data = textData;
+          try {
+            data = JSON.parse(textData);
+          } catch (e) {
+          }
+          matchingConfigs.forEach(({ callbacks }) => {
+            if (typeof callbacks.onResponse === "function") {
+              try {
+                callbacks.onResponse({ data, response: clonedResponse, type: "fetch" });
+              } catch (e) {
+                console.error("[API Monitor] Error in onResponse (fetch):", e);
+              }
+            }
+          });
+        }).catch((err) => {
+          console.error("[API Monitor] Error reading fetch response text:", err);
+          matchingConfigs.forEach(({ callbacks }) => {
+            if (typeof callbacks.onError === "function") {
+              try {
+                callbacks.onError({ error: err, requestInfo, type: "fetch" });
+              } catch (e) {
+                console.error("[API Monitor] Error in onError (fetch response read):", e);
+              }
+            }
+          });
+        });
+        return response;
+      }).catch((error) => {
+        console.error(`[API Monitor] Fetch request failed: ${requestUrl}`, error);
+        matchingConfigs.forEach(({ callbacks }) => {
+          if (typeof callbacks.onError === "function") {
+            try {
+              callbacks.onError({ error, requestInfo, type: "fetch" });
+            } catch (e) {
+              console.error("[API Monitor] Error in onError (fetch request):", e);
+            }
+          }
+        });
+        throw error;
+      });
+    }
     return fetchPromise;
   };
-  const originalXhrOpen = unsafeWindow.XMLHttpRequest.prototype.open;
-  const originalXhrSend = unsafeWindow.XMLHttpRequest.prototype.send;
   unsafeWindow.XMLHttpRequest.prototype.open = function(method, url) {
     this._requestURL = typeof url === "string" ? url : url.toString();
     this._requestMethod = method;
@@ -388,50 +393,55 @@ function monitorApiRequests(targetBaseUrl, callbacks = {}) {
     const requestBaseUrl = xhr._requestBaseURL;
     const method = xhr._requestMethod;
     let requestInfo = null;
-    const shouldMonitor = requestBaseUrl === targetBaseUrl;
-    if (shouldMonitor) {
+    const matchingConfigs = requestBaseUrl ? monitoredConfigs.filter((config) => config.targetBaseUrl === requestBaseUrl) : [];
+    if (matchingConfigs.length > 0 && requestUrl && method) {
       requestInfo = { url: requestUrl, method, body, type: "xhr" };
-      if (typeof onRequest === "function") {
-        try {
-          onRequest(requestInfo);
-        } catch (e) {
-          console.error("[API Monitor] Error in onRequest (XHR):", e);
+      matchingConfigs.forEach(({ callbacks }) => {
+        if (typeof callbacks.onRequest === "function") {
+          try {
+            callbacks.onRequest({ ...requestInfo });
+          } catch (e) {
+            console.error("[API Monitor] Error in onRequest (XHR):", e);
+          }
         }
-      }
+      });
       const originalOnReadyStateChange = xhr.onreadystatechange;
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
+          const responseInfoBase = { response: xhr, type: "xhr" };
           if (xhr.status >= 200 && xhr.status < 300) {
-            if (typeof onResponse === "function") {
-              let data = xhr.responseText;
-              try {
-                data = JSON.parse(xhr.responseText);
-              } catch (e) {
-              }
-              try {
-                onResponse({ data, response: xhr, type: "xhr" });
-              } catch (e) {
-                console.error("[API Monitor] Error in onResponse (XHR):", e);
-              }
+            let data = xhr.responseText;
+            try {
+              data = JSON.parse(xhr.responseText);
+            } catch (e) {
             }
+            matchingConfigs.forEach(({ callbacks }) => {
+              if (typeof callbacks.onResponse === "function") {
+                try {
+                  callbacks.onResponse({ data, ...responseInfoBase });
+                } catch (e) {
+                  console.error("[API Monitor] Error in onResponse (XHR):", e);
+                }
+              }
+            });
           } else {
-            console.error(
-              `[API Monitor] XHR request failed: ${requestUrl}`,
-              xhr.status,
-              xhr.statusText
-            );
-            if (typeof onError === "function") {
-              try {
-                onError({
-                  error: new Error(`XHR failed with status ${xhr.status}`),
-                  requestInfo,
-                  response: xhr,
-                  type: "xhr"
-                });
-              } catch (e) {
-                console.error("[API Monitor] Error in onError (XHR):", e);
+            console.error(`[API Monitor] XHR request failed: ${requestUrl}`, xhr.status, xhr.statusText);
+            const errorInfo = {
+              error: new Error(`XHR failed with status ${xhr.status}`),
+              requestInfo,
+              response: xhr,
+              // Include XHR object for context
+              type: "xhr"
+            };
+            matchingConfigs.forEach(({ callbacks }) => {
+              if (typeof callbacks.onError === "function") {
+                try {
+                  callbacks.onError(errorInfo);
+                } catch (e) {
+                  console.error("[API Monitor] Error in onError (XHR status):", e);
+                }
               }
-            }
+            });
           }
         }
         if (originalOnReadyStateChange) {
@@ -441,13 +451,16 @@ function monitorApiRequests(targetBaseUrl, callbacks = {}) {
       const originalOnError = xhr.onerror;
       xhr.onerror = function(event) {
         console.error(`[API Monitor] XHR onerror triggered: ${requestUrl}`, event);
-        if (typeof onError === "function") {
-          try {
-            onError({ error: event, requestInfo, type: "xhr" });
-          } catch (e) {
-            console.error("[API Monitor] Error in onError (XHR onerror):", e);
+        const errorInfo = { error: event, requestInfo, type: "xhr" };
+        matchingConfigs.forEach(({ callbacks }) => {
+          if (typeof callbacks.onError === "function") {
+            try {
+              callbacks.onError(errorInfo);
+            } catch (e) {
+              console.error("[API Monitor] Error in onError (XHR onerror):", e);
+            }
           }
-        }
+        });
         if (originalOnError) {
           originalOnError.apply(this, arguments);
         }
@@ -455,7 +468,20 @@ function monitorApiRequests(targetBaseUrl, callbacks = {}) {
     }
     return originalXhrSend.apply(this, arguments);
   };
-  console.log(`[API Monitor] Initialized for base URL: ${targetBaseUrl}`);
+  isApiMonitoringPatched = true;
+  console.log("[API Monitor] Fetch and XHR have been patched.");
+}
+function monitorApiRequests(targetBaseUrl, callbacks = {}) {
+  if (!targetBaseUrl) {
+    console.error("[API Monitor] `targetBaseUrl` is required.");
+    return;
+  }
+  if (targetBaseUrl.includes("?")) {
+    console.warn(`[API Monitor] targetBaseUrl "${targetBaseUrl}" contains query parameters. Monitoring typically uses the base path. Consider using "${getBaseUrl(targetBaseUrl)}".`);
+  }
+  monitoredConfigs.push({ targetBaseUrl, callbacks });
+  console.log(`[API Monitor] Added listener for base URL: ${targetBaseUrl}`);
+  applyApiMonitoringPatches();
 }
 
 // ccmgipDataManager.js
@@ -737,7 +763,7 @@ var useNfts = () => waitForObject("ccmgipData.nft.data", {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.7.0"
+    version: "0.7.1"
   },
   {
     dev: false,

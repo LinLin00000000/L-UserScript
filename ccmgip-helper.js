@@ -13,7 +13,7 @@ import { dataManagerInit, useNfts } from './ccmgipDataManager'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.7.0',
+    version: '0.7.1',
   },
   {
     dev: false,
