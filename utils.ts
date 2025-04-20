@@ -1,6 +1,13 @@
 export * from './dynamicQuery'
 import { build } from '../usbuild'
 
+// Declare Greasemonkey/Tampermonkey functions for TypeScript
+declare global {
+  function GM_getValue(key: string, defaultValue?: any): any
+  function GM_setValue(key: string, value: any): void
+  const unsafeWindow: Window & typeof globalThis
+}
+
 /**
  * @description Group an array by a function
  * @template T
@@ -365,13 +372,6 @@ export function waitForObject(
   })
 }
 
-// Declare Greasemonkey/Tampermonkey functions for TypeScript
-declare global {
-  function GM_getValue(key: string, defaultValue?: any): any;
-  function GM_setValue(key: string, value: any): void;
-}
-
-
 export function useStore(key: string, defaultValue = null) {
   // 检查 GM 函数是否存在
   if (
@@ -434,4 +434,224 @@ export function useStore(key: string, defaultValue = null) {
       },
     }
   }
+}
+
+/**
+ * 监听指定 URL 的 fetch 和 XMLHttpRequest 请求。
+ * @param {string} targetBaseUrl 要监听的基础 URL (不包含查询参数)。
+ * @param {object} callbacks 回调函数对象。
+ * @param {function(object): void} [callbacks.onRequest] 请求发起时的回调。参数: { url: string, method?: string, headers?: Headers | object, body?: any, type: 'fetch' | 'xhr' }
+ * @param {function(object): void} [callbacks.onResponse] 成功收到响应时的回调。参数: { data: any, response: Response | XMLHttpRequest, type: 'fetch' | 'xhr' }
+ * @param {function(object): void} [callbacks.onError] 请求或处理响应出错时的回调。参数: { error: any, requestInfo: object, type: 'fetch' | 'xhr' }
+ */
+export function monitorApiRequests(targetBaseUrl: string, callbacks: { onRequest?: (arg0: object) => void; onResponse?: (arg0: object) => void; onError?: (arg0: object) => void } = {}) {
+  const { onRequest, onResponse, onError } = callbacks
+
+  // Helper function to get the base URL (without query parameters)
+  const getBaseUrl = (fullUrl: string): string => {
+    try {
+      const urlObj = new URL(fullUrl, window.location.origin) // Provide a base if the URL is relative
+      return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`
+    } catch (e) {
+      // Handle cases where the URL might be invalid or relative in a way URL constructor doesn't like
+      // For simple cases, just split by '?'
+      return fullUrl.split('?')[0]
+    }
+  }
+
+  // --- 监听 Fetch ---
+  const originalFetch = unsafeWindow.fetch
+  unsafeWindow.fetch = function (input, init = {}) {
+    const requestUrl = input instanceof Request ? input.url : String(input) // Ensure input is stringified
+    const requestBaseUrl = getBaseUrl(requestUrl)
+
+    const method =
+      input instanceof Request ? input.method : init.method || 'GET'
+    const headers =
+      input instanceof Request ? input.headers : init.headers || {}
+    const body = input instanceof Request ? input.body : init.body // Note: body might be a stream
+
+    let requestInfo:any = null
+    const shouldMonitor = requestBaseUrl === targetBaseUrl
+
+    if (shouldMonitor) {
+      requestInfo = { url: requestUrl, method, headers, body, type: 'fetch' }
+      if (typeof onRequest === 'function') {
+        try {
+          onRequest(requestInfo)
+        } catch (e) {
+          console.error('[API Monitor] Error in onRequest (fetch):', e)
+        }
+      }
+    }
+
+    const fetchPromise = originalFetch.apply(this, arguments)
+
+    if (shouldMonitor) {
+      fetchPromise
+        .then(response => {
+          const clonedResponse = response.clone()
+          const processResponse = res => {
+            if (typeof onResponse === 'function') {
+              res
+                .text()
+                .then(textData => {
+                  // Read as text first
+                  let data = textData
+                  try {
+                    data = JSON.parse(textData) // Try parsing as JSON
+                  } catch (e) {
+                    // Keep as text if JSON parsing fails
+                  }
+                  try {
+                    onResponse({
+                      data,
+                      response: clonedResponse,
+                      type: 'fetch',
+                    })
+                  } catch (e) {
+                    console.error(
+                      '[API Monitor] Error in onResponse (fetch):',
+                      e
+                    )
+                  }
+                })
+                .catch(err => {
+                  console.error(
+                    '[API Monitor] Error reading fetch response text:',
+                    err
+                  )
+                  if (typeof onError === 'function') {
+                    try {
+                      onError({ error: err, requestInfo, type: 'fetch' })
+                    } catch (e) {
+                      console.error(
+                        '[API Monitor] Error in onError (fetch response read):',
+                        e
+                      )
+                    }
+                  }
+                })
+            }
+          }
+          processResponse(clonedResponse) // Process the cloned response
+          return response // Return the original response for the page
+        })
+        .catch(error => {
+          console.error(`[API Monitor] Fetch request failed: ${requestUrl}`, error)
+          if (typeof onError === 'function') {
+            try {
+              onError({ error, requestInfo, type: 'fetch' })
+            } catch (e) {
+              console.error(
+                '[API Monitor] Error in onError (fetch request):',
+                e
+              )
+            }
+          }
+        })
+    }
+
+    return fetchPromise
+  }
+
+  // --- 监听 XMLHttpRequest ---
+  const originalXhrOpen = unsafeWindow.XMLHttpRequest.prototype.open
+  const originalXhrSend = unsafeWindow.XMLHttpRequest.prototype.send
+
+  unsafeWindow.XMLHttpRequest.prototype.open = function (method, url) {
+    // Store the full URL and method
+    this._requestURL = typeof url === 'string' ? url : url.toString(); // Ensure url is a string
+    this._requestMethod = method
+    // Store the base URL for comparison
+    this._requestBaseURL = getBaseUrl(this._requestURL)
+    return originalXhrOpen.apply(this, arguments)
+  }
+
+  unsafeWindow.XMLHttpRequest.prototype.send = function (body) {
+    const xhr = this
+    const requestUrl = xhr._requestURL
+    const requestBaseUrl = xhr._requestBaseURL
+    const method = xhr._requestMethod
+
+    let requestInfo:any = null
+    const shouldMonitor = requestBaseUrl === targetBaseUrl
+
+    if (shouldMonitor) {
+      // Note: Accessing request headers set via setRequestHeader is complex before send()
+      requestInfo = { url: requestUrl, method, body, type: 'xhr' }
+      if (typeof onRequest === 'function') {
+        try {
+          onRequest(requestInfo)
+        } catch (e) {
+          console.error('[API Monitor] Error in onRequest (XHR):', e)
+        }
+      }
+
+      const originalOnReadyStateChange = xhr.onreadystatechange
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          // Done
+          if (xhr.status >= 200 && xhr.status < 300) {
+            // Success
+            if (typeof onResponse === 'function') {
+              let data = xhr.responseText
+              try {
+                data = JSON.parse(xhr.responseText)
+              } catch (e) {
+                // Keep as text
+              }
+              try {
+                onResponse({ data, response: xhr, type: 'xhr' })
+              } catch (e) {
+                console.error('[API Monitor] Error in onResponse (XHR):', e)
+              }
+            }
+          } else {
+            // Error
+            console.error(
+              `[API Monitor] XHR request failed: ${requestUrl}`,
+              xhr.status,
+              xhr.statusText
+            )
+            if (typeof onError === 'function') {
+              try {
+                onError({
+                  error: new Error(`XHR failed with status ${xhr.status}`),
+                  requestInfo,
+                  response: xhr,
+                  type: 'xhr',
+                })
+              } catch (e) {
+                console.error('[API Monitor] Error in onError (XHR):', e)
+              }
+            }
+          }
+        }
+        if (originalOnReadyStateChange) {
+          originalOnReadyStateChange.apply(this, arguments)
+        }
+      }
+
+      // Handle onerror event as well
+      const originalOnError = xhr.onerror
+      xhr.onerror = function (event) {
+        console.error(`[API Monitor] XHR onerror triggered: ${requestUrl}`, event)
+        if (typeof onError === 'function') {
+          try {
+            onError({ error: event, requestInfo, type: 'xhr' })
+          } catch (e) {
+            console.error('[API Monitor] Error in onError (XHR onerror):', e)
+          }
+        }
+        if (originalOnError) {
+          originalOnError.apply(this, arguments)
+        }
+      }
+    }
+
+    return originalXhrSend.apply(this, arguments)
+  }
+
+  console.log(`[API Monitor] Initialized for base URL: ${targetBaseUrl}`)
 }
