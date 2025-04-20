@@ -772,7 +772,9 @@ await mybuild(
 );
 var { log } = console;
 dataManagerInit();
-unsafeWindow.orderStore = useStore("orderStore", {});
+orderStore = useStore("orderStore", {});
+unsafeWindow.orderStore = orderStore;
+window.orderStore = orderStore;
 if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity")) {
   const nfts = await useNfts();
   const container = await dynamicQueryAsync(
