@@ -1,4 +1,4 @@
-import { mybuild, sleep, waitForElements } from './utils'
+import { foreverQuery, mybuild, sleep, waitForElements } from './utils'
 
 await mybuild(
   {
@@ -79,3 +79,9 @@ const startPolling = () => {
 }
 
 startPolling()
+
+foreverQuery('._active_1yyur_328, ._jumpBtn_9mtdp_191', e => {
+  if (e.isProcessed) return
+  e.isProcessed = true
+  e.click()
+})
