@@ -14,7 +14,7 @@ import { dataManagerInit, useNfts } from './ccmgipDataManager'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.4.1',
+    version: '0.5.0',
   },
   {
     dev: false,
@@ -25,6 +25,7 @@ await mybuild(
 const { log } = console
 
 dataManagerInit()
+unsafeWindow.orderStore = useStore('orderStore', {})
 
 // 捐助活动页面
 if (
@@ -548,6 +549,8 @@ GM_addStyle(`
 // 藏品浏览
 ;(async () => {
   const nfts = await useNfts()
+  const orders = orderStore.value
+
   foreverQuery('._normalItem_uqw8m_13', item => {
     if (item.isProcessed) return
     item.isProcessed = true
@@ -560,15 +563,26 @@ GM_addStyle(`
     const onSalePrice = nftData.on_sale_lowest_price / 100
     const l2Price = nftData.l2_lowest_price / 100
     const lastestPrice = nftData.l2_lastest_price / 100
+    let buyPrice = null
+
+    const nftOrders = orders[name]
+    if (nftOrders) {
+      // 计算均价
+      buyPrice =
+        Object.values(nftOrders).reduce((acc, e) => acc + e, 0) /
+        Object.keys(nftOrders).length /
+        100
+    }
 
     const text = [
       `市售价 ${onSalePrice}`,
       l2Price === 0
         ? ''
         : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
-      `最新成交价 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(
-        2
-      )} x)`,
+      `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`,
+      buyPrice
+        ? `买入均 ${buyPrice.toFixed(2)} (${(onSalePrice / buyPrice).toFixed(2)} x)`
+        : '',
     ]
       .filter(e => e !== '')
       .join('\n')
@@ -666,9 +680,7 @@ GM_addStyle(`
         l2PriceIsZero
           ? ''
           : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
-        `最新成交价 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(
-          2
-        )} x)`,
+        `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`,
       ]
         .filter(e => e !== '')
         .join('\n')
@@ -681,15 +693,58 @@ GM_addStyle(`
   })
 })()
 
-// const orderStore = useStore('orderStore', {})
+monitorApiRequests('https://l2-api.ccmgip.com/api/v1/users/me/orders', {
+  onResponse: async ({ data, response }) => {
+    if (response.status !== 200) return
+    log('订单数据:', data)
 
-// monitorApiRequests('https://l2-api.ccmgip.com/api/v1/users/me/orders', {
-//   onResponse: async ({ data, response }) => {
-//     if (response.status !== 200) return
-//     log('订单数据:', data)
-//     data.forEach(e => {
-//       const { nftName: name, nfcNumber: number, amount } = e
-//       log(`藏品: ${name}, 编号: ${number}, 价格: ${amount}`)
-//     })
-//   },
-// })
+    const currentOrders = orderStore.value
+    let changed = false
+
+    data.forEach(e => {
+      const { nftName: name, nfcNumber: number, amount } = e
+      log(`购买藏品: ${name}, 编号: ${number}, 价格: ${amount / 100}`)
+      currentOrders[name] ||= {}
+      if (currentOrders[name][number] !== amount) {
+        currentOrders[name][number] = amount
+        changed = true
+      }
+    })
+
+    if (changed) {
+      orderStore.value = currentOrders
+    }
+  },
+})
+
+monitorApiRequests('https://l2-api.ccmgip.com/api/v1/users/me/saleorders', {
+  onResponse: async ({ data, response }) => {
+    if (response.status !== 200) return
+
+    // 已出售订单
+    if (response.responseURL.includes('saleStatus=sold')) {
+      log('出售订单数据:', data)
+
+      const currentOrders = orderStore.value
+      let changed = false
+
+      data.forEach(e => {
+        const { nftName: name, nfcNumber: number } = e
+        log(`已出售藏品: ${name}, 编号: ${number}`)
+        // 去除 store 中的已出售订单
+        if (currentOrders[name] && currentOrders[name][number] !== undefined) {
+          delete currentOrders[name][number]
+          // Optional: Clean up empty name entries
+          if (Object.keys(currentOrders[name]).length === 0) {
+            delete currentOrders[name]
+          }
+          changed = true
+        }
+      })
+
+      if (changed) {
+        orderStore.value = currentOrders
+      }
+    }
+  },
+})

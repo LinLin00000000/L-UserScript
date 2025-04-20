@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.4.1
+// @version      0.5.0
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -9,6 +9,7 @@
 // @match        https://*.ccmgip.com/*
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        unsafeWindow
 // @grant        GM_deleteValue
 // @grant        GM_addValueChangeListener
 // @grant        GM_addStyle
@@ -230,6 +231,231 @@ function waitForObject(pathString, options = {}) {
     intervalHandle = setInterval(check, interval);
     check();
   });
+}
+function useStore(key, defaultValue = null) {
+  if (typeof GM_getValue !== "undefined" && typeof GM_setValue !== "undefined") {
+    console.log(`检测到油猴环境，键 '${key}' 将使用 GM 函数持久化。`);
+    const store = {
+      get value() {
+        return GM_getValue(key, defaultValue);
+      },
+      set value(newValue) {
+        GM_setValue(key, newValue);
+      }
+    };
+    return store;
+  } else if (typeof localStorage !== "undefined") {
+    console.warn(`未检测到 GM 函数，键 '${key}' 将尝试使用 localStorage。`);
+    const store = {
+      get value() {
+        const storedValue = localStorage.getItem(key);
+        if (storedValue === null) {
+          return defaultValue;
+        }
+        try {
+          return JSON.parse(storedValue);
+        } catch (e) {
+          console.error(`读取键 '${key}' 的 localStorage 值失败，解析错误：`, e);
+          return storedValue;
+        }
+      },
+      set value(newValue) {
+        try {
+          localStorage.setItem(key, JSON.stringify(newValue));
+        } catch (e) {
+          console.error(`写入键 '${key}' 到 localStorage 时出错：`, e);
+        }
+      }
+    };
+    return store;
+  } else {
+    console.error("警告：GM 函数和 localStorage 均不可用，数据将无法持久化！");
+    let inMemoryValue = defaultValue;
+    return {
+      get value() {
+        console.warn(`存储不可用，键 '${key}' 读取的是内存中的临时值。`);
+        return inMemoryValue;
+      },
+      set value(newValue) {
+        console.warn(
+          `存储不可用，键 '${key}' 的值仅保存在内存中，刷新后将丢失。`
+        );
+        inMemoryValue = newValue;
+      }
+    };
+  }
+}
+function monitorApiRequests(targetBaseUrl, callbacks = {}) {
+  const { onRequest, onResponse, onError } = callbacks;
+  const getBaseUrl = (fullUrl) => {
+    try {
+      const urlObj = new URL(fullUrl, window.location.origin);
+      return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+    } catch (e) {
+      return fullUrl.split("?")[0];
+    }
+  };
+  const originalFetch = unsafeWindow.fetch;
+  unsafeWindow.fetch = function(input, init = {}) {
+    const requestUrl = input instanceof Request ? input.url : String(input);
+    const requestBaseUrl = getBaseUrl(requestUrl);
+    const method = input instanceof Request ? input.method : init.method || "GET";
+    const headers = input instanceof Request ? input.headers : init.headers || {};
+    const body = input instanceof Request ? input.body : init.body;
+    let requestInfo = null;
+    const shouldMonitor = requestBaseUrl === targetBaseUrl;
+    if (shouldMonitor) {
+      requestInfo = { url: requestUrl, method, headers, body, type: "fetch" };
+      if (typeof onRequest === "function") {
+        try {
+          onRequest(requestInfo);
+        } catch (e) {
+          console.error("[API Monitor] Error in onRequest (fetch):", e);
+        }
+      }
+    }
+    const fetchPromise = originalFetch.apply(this, arguments);
+    if (shouldMonitor) {
+      fetchPromise.then((response) => {
+        const clonedResponse = response.clone();
+        const processResponse = (res) => {
+          if (typeof onResponse === "function") {
+            res.text().then((textData) => {
+              let data = textData;
+              try {
+                data = JSON.parse(textData);
+              } catch (e) {
+              }
+              try {
+                onResponse({
+                  data,
+                  response: clonedResponse,
+                  type: "fetch"
+                });
+              } catch (e) {
+                console.error(
+                  "[API Monitor] Error in onResponse (fetch):",
+                  e
+                );
+              }
+            }).catch((err) => {
+              console.error(
+                "[API Monitor] Error reading fetch response text:",
+                err
+              );
+              if (typeof onError === "function") {
+                try {
+                  onError({ error: err, requestInfo, type: "fetch" });
+                } catch (e) {
+                  console.error(
+                    "[API Monitor] Error in onError (fetch response read):",
+                    e
+                  );
+                }
+              }
+            });
+          }
+        };
+        processResponse(clonedResponse);
+        return response;
+      }).catch((error) => {
+        console.error(`[API Monitor] Fetch request failed: ${requestUrl}`, error);
+        if (typeof onError === "function") {
+          try {
+            onError({ error, requestInfo, type: "fetch" });
+          } catch (e) {
+            console.error(
+              "[API Monitor] Error in onError (fetch request):",
+              e
+            );
+          }
+        }
+      });
+    }
+    return fetchPromise;
+  };
+  const originalXhrOpen = unsafeWindow.XMLHttpRequest.prototype.open;
+  const originalXhrSend = unsafeWindow.XMLHttpRequest.prototype.send;
+  unsafeWindow.XMLHttpRequest.prototype.open = function(method, url) {
+    this._requestURL = typeof url === "string" ? url : url.toString();
+    this._requestMethod = method;
+    this._requestBaseURL = getBaseUrl(this._requestURL);
+    return originalXhrOpen.apply(this, arguments);
+  };
+  unsafeWindow.XMLHttpRequest.prototype.send = function(body) {
+    const xhr = this;
+    const requestUrl = xhr._requestURL;
+    const requestBaseUrl = xhr._requestBaseURL;
+    const method = xhr._requestMethod;
+    let requestInfo = null;
+    const shouldMonitor = requestBaseUrl === targetBaseUrl;
+    if (shouldMonitor) {
+      requestInfo = { url: requestUrl, method, body, type: "xhr" };
+      if (typeof onRequest === "function") {
+        try {
+          onRequest(requestInfo);
+        } catch (e) {
+          console.error("[API Monitor] Error in onRequest (XHR):", e);
+        }
+      }
+      const originalOnReadyStateChange = xhr.onreadystatechange;
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            if (typeof onResponse === "function") {
+              let data = xhr.responseText;
+              try {
+                data = JSON.parse(xhr.responseText);
+              } catch (e) {
+              }
+              try {
+                onResponse({ data, response: xhr, type: "xhr" });
+              } catch (e) {
+                console.error("[API Monitor] Error in onResponse (XHR):", e);
+              }
+            }
+          } else {
+            console.error(
+              `[API Monitor] XHR request failed: ${requestUrl}`,
+              xhr.status,
+              xhr.statusText
+            );
+            if (typeof onError === "function") {
+              try {
+                onError({
+                  error: new Error(`XHR failed with status ${xhr.status}`),
+                  requestInfo,
+                  response: xhr,
+                  type: "xhr"
+                });
+              } catch (e) {
+                console.error("[API Monitor] Error in onError (XHR):", e);
+              }
+            }
+          }
+        }
+        if (originalOnReadyStateChange) {
+          originalOnReadyStateChange.apply(this, arguments);
+        }
+      };
+      const originalOnError = xhr.onerror;
+      xhr.onerror = function(event) {
+        console.error(`[API Monitor] XHR onerror triggered: ${requestUrl}`, event);
+        if (typeof onError === "function") {
+          try {
+            onError({ error: event, requestInfo, type: "xhr" });
+          } catch (e) {
+            console.error("[API Monitor] Error in onError (XHR onerror):", e);
+          }
+        }
+        if (originalOnError) {
+          originalOnError.apply(this, arguments);
+        }
+      };
+    }
+    return originalXhrSend.apply(this, arguments);
+  };
+  console.log(`[API Monitor] Initialized for base URL: ${targetBaseUrl}`);
 }
 
 // ccmgipDataManager.js
@@ -511,7 +737,7 @@ var useNfts = () => waitForObject("ccmgipData.nft.data", {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.4.1"
+    version: "0.5.0"
   },
   {
     dev: false,
@@ -520,6 +746,7 @@ await mybuild(
 );
 var { log } = console;
 dataManagerInit();
+unsafeWindow.orderStore = useStore("orderStore", {});
 if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity")) {
   const nfts = await useNfts();
   const container = await dynamicQueryAsync(
@@ -973,6 +1200,7 @@ GM_addStyle(`
 `);
 (async () => {
   const nfts = await useNfts();
+  const orders = orderStore.value;
   foreverQuery("._normalItem_uqw8m_13", (item) => {
     if (item.isProcessed)
       return;
@@ -986,12 +1214,16 @@ GM_addStyle(`
     const onSalePrice = nftData.on_sale_lowest_price / 100;
     const l2Price = nftData.l2_lowest_price / 100;
     const lastestPrice = nftData.l2_lastest_price / 100;
+    let buyPrice = null;
+    const nftOrders = orders[name];
+    if (nftOrders) {
+      buyPrice = Object.values(nftOrders).reduce((acc, e) => acc + e, 0) / Object.keys(nftOrders).length / 100;
+    }
     const text = [
       `市售价 ${onSalePrice}`,
       l2Price === 0 ? "" : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
-      `最新成交价 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(
-        2
-      )} x)`
+      `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`,
+      buyPrice ? `买入均 ${buyPrice.toFixed(2)} (${(onSalePrice / buyPrice).toFixed(2)} x)` : ""
     ].filter((e) => e !== "").join("\n");
     item.insertAdjacentHTML(
       "beforeend",
@@ -1069,9 +1301,7 @@ GM_addStyle(`
       const text = [
         showOnSalePrice ? `市售价 ${onSalePrice}` : "",
         l2PriceIsZero ? "" : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
-        `最新成交价 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(
-          2
-        )} x)`
+        `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`
       ].filter((e) => e !== "").join("\n");
       parentElement.insertAdjacentHTML(
         "beforeend",
@@ -1080,5 +1310,51 @@ GM_addStyle(`
     }
   });
 })();
+monitorApiRequests("https://l2-api.ccmgip.com/api/v1/users/me/orders", {
+  onResponse: async ({ data, response }) => {
+    if (response.status !== 200)
+      return;
+    log("订单数据:", data);
+    const currentOrders = orderStore.value;
+    let changed = false;
+    data.forEach((e) => {
+      const { nftName: name, nfcNumber: number, amount } = e;
+      log(`购买藏品: ${name}, 编号: ${number}, 价格: ${amount / 100}`);
+      currentOrders[name] ||= {};
+      if (currentOrders[name][number] !== amount) {
+        currentOrders[name][number] = amount;
+        changed = true;
+      }
+    });
+    if (changed) {
+      orderStore.value = currentOrders;
+    }
+  }
+});
+monitorApiRequests("https://l2-api.ccmgip.com/api/v1/users/me/saleorders", {
+  onResponse: async ({ data, response }) => {
+    if (response.status !== 200)
+      return;
+    if (response.responseURL.includes("saleStatus=sold")) {
+      log("出售订单数据:", data);
+      const currentOrders = orderStore.value;
+      let changed = false;
+      data.forEach((e) => {
+        const { nftName: name, nfcNumber: number } = e;
+        log(`已出售藏品: ${name}, 编号: ${number}`);
+        if (currentOrders[name] && currentOrders[name][number] !== void 0) {
+          delete currentOrders[name][number];
+          if (Object.keys(currentOrders[name]).length === 0) {
+            delete currentOrders[name];
+          }
+          changed = true;
+        }
+      });
+      if (changed) {
+        orderStore.value = currentOrders;
+      }
+    }
+  }
+});
 
 })();
