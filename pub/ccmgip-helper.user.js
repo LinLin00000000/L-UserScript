@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.4.0
+// @version      0.4.1
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -511,7 +511,7 @@ var useNfts = () => waitForObject("ccmgipData.nft.data", {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.4.0"
+    version: "0.4.1"
   },
   {
     dev: false,
@@ -590,6 +590,7 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity"
   log("藏品已按价格比例排序完成");
 }
 var replaceBlindDetails = {
+  // 盲盒置换特别活动九
   "0195f977-54f1-4bf3-b12c-f7efb6c043ec": [
     {
       name: "树色平远图",
@@ -680,6 +681,7 @@ var replaceBlindDetails = {
       probability: 5
     }
   ],
+  // 盲盒置换六十七
   "019569e1-4d7f-4965-b3e7-b68c2ce8f30a": [
     {
       name: "树色平远图",
@@ -740,6 +742,117 @@ var replaceBlindDetails = {
     {
       name: "双凤瓜棱盒",
       probability: 16
+    }
+  ],
+  // 盲盒置换六十六
+  "01954583-24a5-47e3-8ed3-6a5863fabc5d": [
+    {
+      name: "树色平远图",
+      probability: 15
+    },
+    {
+      name: "鱼石图",
+      probability: 15
+    },
+    {
+      name: "汉宫观潮图",
+      probability: 15
+    },
+    {
+      name: "花鸟图",
+      probability: 15
+    },
+    {
+      name: "明皇弈棋图",
+      probability: 10
+    },
+    {
+      name: "忒PANDA·赛博",
+      probability: 0.1
+    },
+    {
+      name: "千里江山图",
+      probability: 0.2
+    },
+    {
+      name: "步辇图",
+      probability: 0.5
+    },
+    {
+      name: "韩熙载夜宴图",
+      probability: 0.2
+    },
+    {
+      name: "五牛图",
+      probability: 0.2
+    },
+    {
+      name: "清明上河图",
+      probability: 0.2
+    },
+    {
+      name: "唐宫仕女图-虢国夫人游春图",
+      probability: 0.5
+    },
+    {
+      name: "雪景寒林图",
+      probability: 0.5
+    },
+    {
+      name: "青铜面具",
+      probability: 0.5
+    },
+    {
+      name: "乾隆款黄釉青花莲托寿碗",
+      probability: 0.5
+    },
+    {
+      name: "隶书道德经",
+      probability: 0.5
+    },
+    {
+      name: "青铜扭头跪坐人像",
+      probability: 0.5
+    },
+    {
+      name: "猴猫图",
+      probability: 0.5
+    },
+    {
+      name: "二马图",
+      probability: 1
+    },
+    {
+      name: "杜秋图",
+      probability: 5
+    },
+    {
+      name: "鼓吹骑俑",
+      probability: 1
+    },
+    {
+      name: "剔红山水人物纹瓶",
+      probability: 1
+    },
+    {
+      name: "上苑春游图",
+      probability: 5
+    },
+    {
+      name: "鸭形铜砚滴",
+      probability: 5.3
+    },
+    {
+      name: "三彩折枝牡丹纹枕",
+      probability: 5
+    },
+    {
+      name: "蜀川胜概图",
+      probability: 1
+    },
+    {
+      name: "虎钮如意云纹青玉握",
+      probability: 1
     }
   ]
 };
@@ -809,8 +922,17 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/replaceBlind")) {
   const blindContent = document.querySelector('[class^="replaceBlind_blind-content"]') || container;
   let consumeCount = null;
   let consumeValue = null;
+  let blindCount = null;
+  const blindRuleElement = document.querySelector(
+    '[class^="replaceBlind_rule-card"]'
+  );
+  const blindRuleText = blindRuleElement?.textContent?.trim();
+  const match = blindRuleText?.match(/任意不同的(\d+)份来置换(\d+)份/);
+  if (match) {
+    consumeCount = parseInt(match[1]);
+    blindCount = parseInt(match[2]);
+  }
   if (subtitleElement) {
-    consumeCount = subtitleElement.textContent.match(/\d+/g)[0];
     const consumeItems = processedItems.slice(0, consumeCount);
     consumeValue = consumeItems.reduce((acc, item) => acc + item.price, 0);
     const consumeElement = document.createElement("div");
@@ -831,13 +953,13 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/replaceBlind")) {
       2
     )}`;
     blindContent.appendChild(valueExpectationElement);
-    if (consumeCount && consumeValue) {
+    if (consumeCount && consumeValue && blindCount) {
       const profitElement = document.createElement("div");
       profitElement.className = "profit-value";
       profitElement.style.fontSize = "16px";
       profitElement.style.color = "#ff9900";
       profitElement.style.marginTop = "10px";
-      const profitValue = totalValue * consumeCount - consumeValue;
+      const profitValue = totalValue * blindCount - consumeValue;
       profitElement.textContent = `置换收益: ${profitValue.toFixed(2)}`;
       blindContent.appendChild(profitElement);
     }
