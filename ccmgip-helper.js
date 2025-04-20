@@ -13,7 +13,7 @@ import { dataManagerInit, useNfts } from './ccmgipDataManager'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.7.1',
+    version: '0.7.2',
   },
   {
     dev: false,
@@ -24,7 +24,7 @@ await mybuild(
 const { log } = console
 
 dataManagerInit()
-unsafeWindow.orderStore = useStore('orderStore', {})
+window.orderStore = useStore('orderStore', {})
 
 // 捐助活动页面
 if (

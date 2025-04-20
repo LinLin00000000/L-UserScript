@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.7.1
+// @version      0.7.2
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -9,7 +9,6 @@
 // @match        https://*.ccmgip.com/*
 // @grant        GM_getValue
 // @grant        GM_setValue
-// @grant        unsafeWindow
 // @grant        GM_deleteValue
 // @grant        GM_addValueChangeListener
 // @grant        GM_addStyle
@@ -303,17 +302,17 @@ function applyApiMonitoringPatches() {
     return;
   }
   try {
-    originalFetch = unsafeWindow.fetch;
-    originalXhrOpen = unsafeWindow.XMLHttpRequest.prototype.open;
-    originalXhrSend = unsafeWindow.XMLHttpRequest.prototype.send;
+    originalFetch = window.fetch;
+    originalXhrOpen = window.XMLHttpRequest.prototype.open;
+    originalXhrSend = window.XMLHttpRequest.prototype.send;
     if (!originalFetch || !originalXhrOpen || !originalXhrSend) {
-      throw new Error("Required native functions (fetch, XHR.open, XHR.send) not found on unsafeWindow.");
+      throw new Error("Required native functions (fetch, XHR.open, XHR.send) not found on window.");
     }
   } catch (error) {
-    console.error("[API Monitor] Failed to get original fetch/XHR methods from unsafeWindow:", error);
+    console.error("[API Monitor] Failed to get original fetch/XHR methods from window:", error);
     return;
   }
-  unsafeWindow.fetch = function(input, init = {}) {
+  window.fetch = function(input, init = {}) {
     const requestUrl = input instanceof Request ? input.url : String(input);
     const requestBaseUrl = getBaseUrl(requestUrl);
     const method = input instanceof Request ? input.method : init?.method || "GET";
@@ -333,7 +332,7 @@ function applyApiMonitoringPatches() {
         }
       });
     }
-    const fetchPromise = originalFetch.apply(unsafeWindow, arguments);
+    const fetchPromise = originalFetch.apply(window, arguments);
     if (matchingConfigs.length > 0) {
       fetchPromise.then((response) => {
         const clonedResponse = response.clone();
@@ -381,13 +380,13 @@ function applyApiMonitoringPatches() {
     }
     return fetchPromise;
   };
-  unsafeWindow.XMLHttpRequest.prototype.open = function(method, url) {
+  window.XMLHttpRequest.prototype.open = function(method, url) {
     this._requestURL = typeof url === "string" ? url : url.toString();
     this._requestMethod = method;
     this._requestBaseURL = getBaseUrl(this._requestURL);
     return originalXhrOpen.apply(this, arguments);
   };
-  unsafeWindow.XMLHttpRequest.prototype.send = function(body) {
+  window.XMLHttpRequest.prototype.send = function(body) {
     const xhr = this;
     const requestUrl = xhr._requestURL;
     const requestBaseUrl = xhr._requestBaseURL;
@@ -763,7 +762,7 @@ var useNfts = () => waitForObject("ccmgipData.nft.data", {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.7.1"
+    version: "0.7.2"
   },
   {
     dev: false,
@@ -772,7 +771,7 @@ await mybuild(
 );
 var { log } = console;
 dataManagerInit();
-unsafeWindow.orderStore = useStore("orderStore", {});
+window.orderStore = useStore("orderStore", {});
 if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity")) {
   const nfts = await useNfts();
   const container = await dynamicQueryAsync(

@@ -437,9 +437,9 @@ export function useStore(key: string, defaultValue = null) {
 }
 
 // Store original methods - declare them here, initialize later
-let originalFetch: typeof unsafeWindow.fetch | undefined = undefined;
-let originalXhrOpen: typeof unsafeWindow.XMLHttpRequest.prototype.open | undefined = undefined;
-let originalXhrSend: typeof unsafeWindow.XMLHttpRequest.prototype.send | undefined = undefined;
+let originalFetch: typeof window.fetch | undefined = undefined;
+let originalXhrOpen: typeof window.XMLHttpRequest.prototype.open | undefined = undefined;
+let originalXhrSend: typeof window.XMLHttpRequest.prototype.send | undefined = undefined;
 
 // --- Type Definitions ---
 interface RequestInfo {
@@ -492,22 +492,22 @@ function applyApiMonitoringPatches() {
 
   // --- Initialize original methods here ---
   try {
-    originalFetch = unsafeWindow.fetch;
-    originalXhrOpen = unsafeWindow.XMLHttpRequest.prototype.open;
-    originalXhrSend = unsafeWindow.XMLHttpRequest.prototype.send;
+    originalFetch = window.fetch;
+    originalXhrOpen = window.XMLHttpRequest.prototype.open;
+    originalXhrSend = window.XMLHttpRequest.prototype.send;
 
     if (!originalFetch || !originalXhrOpen || !originalXhrSend) {
-        throw new Error("Required native functions (fetch, XHR.open, XHR.send) not found on unsafeWindow.");
+        throw new Error("Required native functions (fetch, XHR.open, XHR.send) not found on window.");
     }
   } catch (error) {
-    console.error("[API Monitor] Failed to get original fetch/XHR methods from unsafeWindow:", error);
+    console.error("[API Monitor] Failed to get original fetch/XHR methods from window:", error);
     // Optionally, prevent patching if originals aren't found
     return;
   }
 
 
   // --- Patch Fetch ---
-  unsafeWindow.fetch = function (input, init = {}) {
+  window.fetch = function (input, init = {}) {
   const requestUrl = input instanceof Request ? input.url : String(input);
   const requestBaseUrl = getBaseUrl(requestUrl);
   const method = input instanceof Request ? input.method : init?.method || 'GET';
@@ -535,7 +535,7 @@ function applyApiMonitoringPatches() {
   }
 
   // Always call the original fetch
-  const fetchPromise = originalFetch.apply(unsafeWindow, arguments as any);
+  const fetchPromise = originalFetch.apply(window, arguments as any);
 
   if (matchingConfigs.length > 0) {
     // Attach handlers to the promise returned by the original fetch
@@ -595,7 +595,7 @@ function applyApiMonitoringPatches() {
   };
 
   // --- Patch XMLHttpRequest ---
-  unsafeWindow.XMLHttpRequest.prototype.open = function (method, url) {
+  window.XMLHttpRequest.prototype.open = function (method, url) {
   // Store request details on the XHR instance for access in send()
   this._requestURL = typeof url === 'string' ? url : url.toString();
   this._requestMethod = method;
@@ -604,7 +604,7 @@ function applyApiMonitoringPatches() {
   return originalXhrOpen.apply(this, arguments as any);
   };
 
-  unsafeWindow.XMLHttpRequest.prototype.send = function (body) {
+  window.XMLHttpRequest.prototype.send = function (body) {
   // `this` refers to the XHR instance. Augment type for stored properties.
   const xhr = this as XMLHttpRequest & { _requestURL?: string, _requestMethod?: string, _requestBaseURL?: string };
   const requestUrl = xhr._requestURL;
