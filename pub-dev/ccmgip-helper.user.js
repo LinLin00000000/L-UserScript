@@ -773,7 +773,8 @@ await mybuild(
 try {
   const { log } = console;
   dataManagerInit();
-  window.orderStore = useStore("orderStore", {});
+  unsafeWindow ||= window;
+  unsafeWindow.orderStore = useStore("orderStore", {});
   if (location.href.includes(
     "https://ershisi.ccmgip.com/24solar/donationActivity"
   )) {
@@ -1268,6 +1269,19 @@ try {
         "beforeend",
         `<span class="_helperText">${text}</span>`
       );
+      const button = document.createElement("button");
+      button.textContent = "打印订单";
+      button.className = "_helperText";
+      button.style.cursor = "pointer";
+      button.addEventListener(
+        "click",
+        (event) => {
+          event.stopPropagation();
+          event.preventDefault();
+          alert(JSON.stringify(orderStore.value, null, 2));
+        }
+      );
+      item.appendChild(button);
     });
   })();
   (async () => {
