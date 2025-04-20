@@ -7,14 +7,13 @@ import {
   sleep,
   useStore,
   waitForElements,
-  waitForObject,
 } from './utils'
 import { dataManagerInit, useNfts } from './ccmgipDataManager'
 
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.5.0',
+    version: '0.6.0',
   },
   {
     dev: false,
@@ -563,15 +562,23 @@ GM_addStyle(`
     const onSalePrice = nftData.on_sale_lowest_price / 100
     const l2Price = nftData.l2_lowest_price / 100
     const lastestPrice = nftData.l2_lastest_price / 100
+
     let buyPrice = null
+    let offerPrice = null
 
     const nftOrders = orders[name]
     if (nftOrders) {
+      const { offer, ...buys } = nftOrders
+      if (offer) {
+        offerPrice = offer / 100
+      }
+
       // 计算均价
-      buyPrice =
-        Object.values(nftOrders).reduce((acc, e) => acc + e, 0) /
-        Object.keys(nftOrders).length /
-        100
+      const buysCount = Object.keys(buys).length
+      if (buysCount > 0) {
+        const buysSum = Object.values(buys).reduce((acc, e) => acc + e, 0)
+        buyPrice = buysSum / buysCount / 100
+      }
     }
 
     const text = [
@@ -582,6 +589,9 @@ GM_addStyle(`
       `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`,
       buyPrice
         ? `买入均 ${buyPrice.toFixed(2)} (${(onSalePrice / buyPrice).toFixed(2)} x)`
+        : '',
+      offerPrice
+        ? `已寄售 ${offerPrice} (${(onSalePrice / offerPrice).toFixed(2)} x)`
         : '',
     ]
       .filter(e => e !== '')
@@ -720,6 +730,28 @@ monitorApiRequests('https://l2-api.ccmgip.com/api/v1/users/me/orders', {
 monitorApiRequests('https://l2-api.ccmgip.com/api/v1/users/me/saleorders', {
   onResponse: async ({ data, response }) => {
     if (response.status !== 200) return
+
+    // 寄售订单
+    if (response.responseURL.includes('saleType=offer')) {
+      log('寄售订单数据:', data)
+
+      const currentOrders = orderStore.value
+      let changed = false
+
+      data.forEach(e => {
+        const { nftName: name, nfcNumber: number, currentPrice } = e
+        log(`寄售藏品: ${name}, 编号: ${number}, 价格: ${currentPrice / 100}`)
+        currentOrders[name] ||= {}
+        if (currentOrders[name][number] !== currentPrice) {
+          currentOrders[name].offer = currentPrice
+          changed = true
+        }
+      })
+
+      if (changed) {
+        orderStore.value = currentOrders
+      }
+    }
 
     // 已出售订单
     if (response.responseURL.includes('saleStatus=sold')) {
