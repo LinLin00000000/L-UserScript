@@ -773,9 +773,7 @@ await mybuild(
 try {
   const { log } = console;
   dataManagerInit();
-  orderStore = useStore("orderStore", {});
-  unsafeWindow.orderStore = orderStore;
-  window.orderStore = orderStore;
+  window.orderStore = useStore("orderStore", {});
   if (location.href.includes(
     "https://ershisi.ccmgip.com/24solar/donationActivity"
   )) {
