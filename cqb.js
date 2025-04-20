@@ -3,7 +3,7 @@ import { foreverQuery, mybuild, sleep, waitForElements } from './utils'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.1.0',
+    version: '0.2.0',
   },
   {
     dev: false,
@@ -50,7 +50,7 @@ globalThis.qb = async () => {
   }
 }
 
-const qbDebounceDelay = 500
+const qbDebounceDelay = 250
 const debouncedQb = debounce(qb, qbDebounceDelay)
 
 // 设置元素 b 的观察器函数 - 重命名为 startPolling

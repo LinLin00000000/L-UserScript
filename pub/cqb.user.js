@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         cqb
 // @namespace    L-UserScript
-// @version      0.1.0
+// @version      0.2.0
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -183,7 +183,7 @@ function waitForElements(selector, maxTries = 20, interval = 500) {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.1.0"
+    version: "0.2.0"
   },
   {
     dev: false,
@@ -223,7 +223,7 @@ globalThis.qb = async () => {
     console.error("qb：执行 waitForElements 或后续操作时出错:", error);
   }
 };
-var qbDebounceDelay = 500;
+var qbDebounceDelay = 250;
 var debouncedQb = debounce(qb, qbDebounceDelay);
 var startPolling = () => {
   console.log("开始轮询检查元素 b...");
