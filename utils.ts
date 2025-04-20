@@ -436,222 +436,297 @@ export function useStore(key: string, defaultValue = null) {
   }
 }
 
-/**
- * 监听指定 URL 的 fetch 和 XMLHttpRequest 请求。
- * @param {string} targetBaseUrl 要监听的基础 URL (不包含查询参数)。
- * @param {object} callbacks 回调函数对象。
- * @param {function(object): void} [callbacks.onRequest] 请求发起时的回调。参数: { url: string, method?: string, headers?: Headers | object, body?: any, type: 'fetch' | 'xhr' }
- * @param {function(object): void} [callbacks.onResponse] 成功收到响应时的回调。参数: { data: any, response: Response | XMLHttpRequest, type: 'fetch' | 'xhr' }
- * @param {function(object): void} [callbacks.onError] 请求或处理响应出错时的回调。参数: { error: any, requestInfo: object, type: 'fetch' | 'xhr' }
- */
-export function monitorApiRequests(targetBaseUrl: string, callbacks: { onRequest?: (arg0: object) => void; onResponse?: (arg0: object) => void; onError?: (arg0: object) => void } = {}) {
-  const { onRequest, onResponse, onError } = callbacks
+// Store original methods - declare them here, initialize later
+let originalFetch: typeof unsafeWindow.fetch | undefined = undefined;
+let originalXhrOpen: typeof unsafeWindow.XMLHttpRequest.prototype.open | undefined = undefined;
+let originalXhrSend: typeof unsafeWindow.XMLHttpRequest.prototype.send | undefined = undefined;
 
-  // Helper function to get the base URL (without query parameters)
-  const getBaseUrl = (fullUrl: string): string => {
-    try {
-      const urlObj = new URL(fullUrl, window.location.origin) // Provide a base if the URL is relative
-      return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`
-    } catch (e) {
-      // Handle cases where the URL might be invalid or relative in a way URL constructor doesn't like
-      // For simple cases, just split by '?'
-      return fullUrl.split('?')[0]
-    }
+// --- Type Definitions ---
+interface RequestInfo {
+  url: string;
+  method?: string;
+  headers?: Headers | object;
+  body?: any;
+  type: 'fetch' | 'xhr';
+}
+interface ResponseInfo {
+  data: any;
+  response: Response | XMLHttpRequest;
+  type: 'fetch' | 'xhr';
+}
+interface ErrorInfo {
+  error: any;
+  requestInfo?: RequestInfo | null; // requestInfo might not be available for all errors
+  response?: Response | XMLHttpRequest; // Include response in case of HTTP errors
+  type: 'fetch' | 'xhr';
+}
+type ApiMonitorCallbacks = {
+  onRequest?: (arg0: RequestInfo) => void;
+  onResponse?: (arg0: ResponseInfo) => void;
+  onError?: (arg0: ErrorInfo) => void;
+};
+
+// Registry for monitored configurations
+const monitoredConfigs: { targetBaseUrl: string; callbacks: ApiMonitorCallbacks }[] = [];
+
+// Flag to ensure patching happens only once
+let isApiMonitoringPatched = false;
+
+// Helper function to get the base URL (without query parameters)
+const getBaseUrl = (fullUrl: string): string => {
+  try {
+  // Use window.location.origin as base for potentially relative URLs
+  const urlObj = new URL(fullUrl, window.location.origin);
+  return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+  } catch (e) {
+  // Fallback for invalid URLs or simple cases
+  return fullUrl.split('?')[0];
+  }
+};
+
+// Function to apply the patches exactly once
+function applyApiMonitoringPatches() {
+  if (isApiMonitoringPatched) {
+  return; // Already patched
   }
 
-  // --- 监听 Fetch ---
-  const originalFetch = unsafeWindow.fetch
+  // --- Initialize original methods here ---
+  try {
+    originalFetch = unsafeWindow.fetch;
+    originalXhrOpen = unsafeWindow.XMLHttpRequest.prototype.open;
+    originalXhrSend = unsafeWindow.XMLHttpRequest.prototype.send;
+
+    if (!originalFetch || !originalXhrOpen || !originalXhrSend) {
+        throw new Error("Required native functions (fetch, XHR.open, XHR.send) not found on unsafeWindow.");
+    }
+  } catch (error) {
+    console.error("[API Monitor] Failed to get original fetch/XHR methods from unsafeWindow:", error);
+    // Optionally, prevent patching if originals aren't found
+    return;
+  }
+
+
+  // --- Patch Fetch ---
   unsafeWindow.fetch = function (input, init = {}) {
-    const requestUrl = input instanceof Request ? input.url : String(input) // Ensure input is stringified
-    const requestBaseUrl = getBaseUrl(requestUrl)
+  const requestUrl = input instanceof Request ? input.url : String(input);
+  const requestBaseUrl = getBaseUrl(requestUrl);
+  const method = input instanceof Request ? input.method : init?.method || 'GET';
+  const headers = input instanceof Request ? input.headers : init?.headers || {};
+  // Note: Accessing body might consume it. Cloning might be needed if onRequest needs it.
+  const body = input instanceof Request ? input.body : init?.body;
 
-    const method =
-      input instanceof Request ? input.method : init.method || 'GET'
-    const headers =
-      input instanceof Request ? input.headers : init.headers || {}
-    const body = input instanceof Request ? input.body : init.body // Note: body might be a stream
+  let requestInfo: RequestInfo | null = null;
+  // Find all configurations matching the current request's base URL
+  const matchingConfigs = monitoredConfigs.filter(config => config.targetBaseUrl === requestBaseUrl);
 
-    let requestInfo:any = null
-    const shouldMonitor = requestBaseUrl === targetBaseUrl
-
-    if (shouldMonitor) {
-      requestInfo = { url: requestUrl, method, headers, body, type: 'fetch' }
-      if (typeof onRequest === 'function') {
-        try {
-          onRequest(requestInfo)
-        } catch (e) {
-          console.error('[API Monitor] Error in onRequest (fetch):', e)
-        }
+  if (matchingConfigs.length > 0) {
+    requestInfo = { url: requestUrl, method, headers, body, type: 'fetch' };
+    // Trigger onRequest for all matching listeners
+    matchingConfigs.forEach(({ callbacks }) => {
+    if (typeof callbacks.onRequest === 'function') {
+      try {
+      // Pass a copy in case the callback modifies it
+      callbacks.onRequest({ ...requestInfo! });
+      } catch (e) {
+      console.error('[API Monitor] Error in onRequest (fetch):', e);
       }
     }
-
-    const fetchPromise = originalFetch.apply(this, arguments)
-
-    if (shouldMonitor) {
-      fetchPromise
-        .then(response => {
-          const clonedResponse = response.clone()
-          const processResponse = res => {
-            if (typeof onResponse === 'function') {
-              res
-                .text()
-                .then(textData => {
-                  // Read as text first
-                  let data = textData
-                  try {
-                    data = JSON.parse(textData) // Try parsing as JSON
-                  } catch (e) {
-                    // Keep as text if JSON parsing fails
-                  }
-                  try {
-                    onResponse({
-                      data,
-                      response: clonedResponse,
-                      type: 'fetch',
-                    })
-                  } catch (e) {
-                    console.error(
-                      '[API Monitor] Error in onResponse (fetch):',
-                      e
-                    )
-                  }
-                })
-                .catch(err => {
-                  console.error(
-                    '[API Monitor] Error reading fetch response text:',
-                    err
-                  )
-                  if (typeof onError === 'function') {
-                    try {
-                      onError({ error: err, requestInfo, type: 'fetch' })
-                    } catch (e) {
-                      console.error(
-                        '[API Monitor] Error in onError (fetch response read):',
-                        e
-                      )
-                    }
-                  }
-                })
-            }
-          }
-          processResponse(clonedResponse) // Process the cloned response
-          return response // Return the original response for the page
-        })
-        .catch(error => {
-          console.error(`[API Monitor] Fetch request failed: ${requestUrl}`, error)
-          if (typeof onError === 'function') {
-            try {
-              onError({ error, requestInfo, type: 'fetch' })
-            } catch (e) {
-              console.error(
-                '[API Monitor] Error in onError (fetch request):',
-                e
-              )
-            }
-          }
-        })
-    }
-
-    return fetchPromise
+    });
   }
 
-  // --- 监听 XMLHttpRequest ---
-  const originalXhrOpen = unsafeWindow.XMLHttpRequest.prototype.open
-  const originalXhrSend = unsafeWindow.XMLHttpRequest.prototype.send
+  // Always call the original fetch
+  const fetchPromise = originalFetch.apply(unsafeWindow, arguments as any);
 
+  if (matchingConfigs.length > 0) {
+    // Attach handlers to the promise returned by the original fetch
+    fetchPromise
+    .then(response => {
+      const clonedResponse = response.clone(); // Clone to safely read body
+      // Process the response body asynchronously
+      clonedResponse.text().then(textData => {
+      let data: any = textData;
+      try {
+        data = JSON.parse(textData); // Attempt to parse as JSON
+      } catch (e) { /* Keep as text if parsing fails */ }
+
+      // Trigger onResponse for all matching listeners
+      matchingConfigs.forEach(({ callbacks }) => {
+        if (typeof callbacks.onResponse === 'function') {
+        try {
+          callbacks.onResponse({ data, response: clonedResponse, type: 'fetch' });
+        } catch (e) {
+          console.error('[API Monitor] Error in onResponse (fetch):', e);
+        }
+        }
+      });
+      }).catch(err => {
+      // Handle errors during response body processing
+      console.error('[API Monitor] Error reading fetch response text:', err);
+      matchingConfigs.forEach(({ callbacks }) => {
+        if (typeof callbacks.onError === 'function') {
+        try {
+          callbacks.onError({ error: err, requestInfo, type: 'fetch' });
+        } catch (e) {
+          console.error('[API Monitor] Error in onError (fetch response read):', e);
+        }
+        }
+      });
+      });
+      return response; // Return the original response to the caller chain
+    })
+    .catch(error => {
+      // Handle network errors or other issues with the fetch call itself
+      console.error(`[API Monitor] Fetch request failed: ${requestUrl}`, error);
+      matchingConfigs.forEach(({ callbacks }) => {
+      if (typeof callbacks.onError === 'function') {
+        try {
+        callbacks.onError({ error, requestInfo, type: 'fetch' });
+        } catch (e) {
+        console.error('[API Monitor] Error in onError (fetch request):', e);
+        }
+      }
+      });
+      // Important: Re-throw the error so the original caller's catch block is triggered
+      throw error;
+    });
+  }
+
+  return fetchPromise; // Return the promise
+  };
+
+  // --- Patch XMLHttpRequest ---
   unsafeWindow.XMLHttpRequest.prototype.open = function (method, url) {
-    // Store the full URL and method
-    this._requestURL = typeof url === 'string' ? url : url.toString(); // Ensure url is a string
-    this._requestMethod = method
-    // Store the base URL for comparison
-    this._requestBaseURL = getBaseUrl(this._requestURL)
-    return originalXhrOpen.apply(this, arguments)
-  }
+  // Store request details on the XHR instance for access in send()
+  this._requestURL = typeof url === 'string' ? url : url.toString();
+  this._requestMethod = method;
+  this._requestBaseURL = getBaseUrl(this._requestURL);
+  // Call the original open method
+  return originalXhrOpen.apply(this, arguments as any);
+  };
 
   unsafeWindow.XMLHttpRequest.prototype.send = function (body) {
-    const xhr = this
-    const requestUrl = xhr._requestURL
-    const requestBaseUrl = xhr._requestBaseURL
-    const method = xhr._requestMethod
+  // `this` refers to the XHR instance. Augment type for stored properties.
+  const xhr = this as XMLHttpRequest & { _requestURL?: string, _requestMethod?: string, _requestBaseURL?: string };
+  const requestUrl = xhr._requestURL;
+  const requestBaseUrl = xhr._requestBaseURL;
+  const method = xhr._requestMethod;
 
-    let requestInfo:any = null
-    const shouldMonitor = requestBaseUrl === targetBaseUrl
+  let requestInfo: RequestInfo | null = null;
+  // Find matching configurations based on the stored base URL
+  const matchingConfigs = requestBaseUrl
+    ? monitoredConfigs.filter(config => config.targetBaseUrl === requestBaseUrl)
+    : [];
 
-    if (shouldMonitor) {
-      // Note: Accessing request headers set via setRequestHeader is complex before send()
-      requestInfo = { url: requestUrl, method, body, type: 'xhr' }
-      if (typeof onRequest === 'function') {
-        try {
-          onRequest(requestInfo)
-        } catch (e) {
-          console.error('[API Monitor] Error in onRequest (XHR):', e)
-        }
-      }
-
-      const originalOnReadyStateChange = xhr.onreadystatechange
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          // Done
-          if (xhr.status >= 200 && xhr.status < 300) {
-            // Success
-            if (typeof onResponse === 'function') {
-              let data = xhr.responseText
-              try {
-                data = JSON.parse(xhr.responseText)
-              } catch (e) {
-                // Keep as text
-              }
-              try {
-                onResponse({ data, response: xhr, type: 'xhr' })
-              } catch (e) {
-                console.error('[API Monitor] Error in onResponse (XHR):', e)
-              }
-            }
-          } else {
-            // Error
-            console.error(
-              `[API Monitor] XHR request failed: ${requestUrl}`,
-              xhr.status,
-              xhr.statusText
-            )
-            if (typeof onError === 'function') {
-              try {
-                onError({
-                  error: new Error(`XHR failed with status ${xhr.status}`),
-                  requestInfo,
-                  response: xhr,
-                  type: 'xhr',
-                })
-              } catch (e) {
-                console.error('[API Monitor] Error in onError (XHR):', e)
-              }
-            }
-          }
-        }
-        if (originalOnReadyStateChange) {
-          originalOnReadyStateChange.apply(this, arguments)
-        }
-      }
-
-      // Handle onerror event as well
-      const originalOnError = xhr.onerror
-      xhr.onerror = function (event) {
-        console.error(`[API Monitor] XHR onerror triggered: ${requestUrl}`, event)
-        if (typeof onError === 'function') {
-          try {
-            onError({ error: event, requestInfo, type: 'xhr' })
-          } catch (e) {
-            console.error('[API Monitor] Error in onError (XHR onerror):', e)
-          }
-        }
-        if (originalOnError) {
-          originalOnError.apply(this, arguments)
-        }
+  if (matchingConfigs.length > 0 && requestUrl && method) {
+    requestInfo = { url: requestUrl, method, body, type: 'xhr' };
+    // Trigger onRequest for all matching listeners
+    matchingConfigs.forEach(({ callbacks }) => {
+    if (typeof callbacks.onRequest === 'function') {
+      try {
+      callbacks.onRequest({ ...requestInfo! });
+      } catch (e) {
+      console.error('[API Monitor] Error in onRequest (XHR):', e);
       }
     }
+    });
 
-    return originalXhrSend.apply(this, arguments)
+    // Add event listeners to *this specific* XHR instance
+    const originalOnReadyStateChange = xhr.onreadystatechange;
+    xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) { // Request finished
+      const responseInfoBase = { response: xhr, type: 'xhr' as const };
+      if (xhr.status >= 200 && xhr.status < 300) { // Success
+      let data: any = xhr.responseText;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch (e) { /* Keep as text */ }
+
+      matchingConfigs.forEach(({ callbacks }) => {
+        if (typeof callbacks.onResponse === 'function') {
+        try {
+          callbacks.onResponse({ data, ...responseInfoBase });
+        } catch (e) {
+          console.error('[API Monitor] Error in onResponse (XHR):', e);
+        }
+        }
+      });
+      } else { // Error (HTTP status code indicates failure)
+      console.error(`[API Monitor] XHR request failed: ${requestUrl}`, xhr.status, xhr.statusText);
+      const errorInfo: ErrorInfo = {
+        error: new Error(`XHR failed with status ${xhr.status}`),
+        requestInfo,
+        response: xhr, // Include XHR object for context
+        type: 'xhr'
+      };
+      matchingConfigs.forEach(({ callbacks }) => {
+        if (typeof callbacks.onError === 'function') {
+        try {
+          callbacks.onError(errorInfo);
+        } catch (e) {
+          console.error('[API Monitor] Error in onError (XHR status):', e);
+        }
+        }
+      });
+      }
+    }
+    // Call the original onreadystatechange handler, if one existed
+    if (originalOnReadyStateChange) {
+      originalOnReadyStateChange.apply(this, arguments);
+    }
+    };
+
+    const originalOnError = xhr.onerror;
+    xhr.onerror = function (event) { // Network errors (e.g., CORS, connection refused)
+    console.error(`[API Monitor] XHR onerror triggered: ${requestUrl}`, event);
+    const errorInfo: ErrorInfo = { error: event, requestInfo, type: 'xhr' };
+    matchingConfigs.forEach(({ callbacks }) => {
+      if (typeof callbacks.onError === 'function') {
+      try {
+        callbacks.onError(errorInfo);
+      } catch (e) {
+        console.error('[API Monitor] Error in onError (XHR onerror):', e);
+      }
+      }
+    });
+    // Call the original onerror handler, if one existed
+    if (originalOnError) {
+      originalOnError.apply(this, arguments);
+    }
+    };
   }
 
-  console.log(`[API Monitor] Initialized for base URL: ${targetBaseUrl}`)
+  // Always call the original send method
+  return originalXhrSend.apply(this, arguments as any);
+  };
+
+  isApiMonitoringPatched = true;
+  console.log('[API Monitor] Fetch and XHR have been patched.');
+}
+
+/**
+ * 监听指定 URL 的 fetch 和 XMLHttpRequest 请求。
+ * 可以多次调用本函数来监听不同的 URL 或使用不同的回调。
+ * @param {string} targetBaseUrl 要监听的基础 URL (主机名+路径，不含查询参数)。
+ * @param {ApiMonitorCallbacks} callbacks 回调函数对象。
+ * @param {function(RequestInfo): void} [callbacks.onRequest] 请求发起时的回调。
+ * @param {function(ResponseInfo): void} [callbacks.onResponse] 成功收到响应时的回调。
+ * @param {function(ErrorInfo): void} [callbacks.onError] 请求或处理响应出错时的回调。
+ */
+export function monitorApiRequests(targetBaseUrl: string, callbacks: ApiMonitorCallbacks = {}) {
+  if (!targetBaseUrl) {
+  console.error('[API Monitor] `targetBaseUrl` is required.');
+  return;
+  }
+  if (targetBaseUrl.includes('?')) {
+    console.warn(`[API Monitor] targetBaseUrl "${targetBaseUrl}" contains query parameters. Monitoring typically uses the base path. Consider using "${getBaseUrl(targetBaseUrl)}".`);
+  }
+
+
+  // Add the new configuration to our list
+  monitoredConfigs.push({ targetBaseUrl, callbacks });
+  console.log(`[API Monitor] Added listener for base URL: ${targetBaseUrl}`);
+
+  // Apply the patches if they haven't been applied yet
+  // This will also initialize the originalFetch/XHR variables on the first call
+  applyApiMonitoringPatches();
 }
