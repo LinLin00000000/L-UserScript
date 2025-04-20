@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         cqb
 // @namespace    L-UserScript
-// @version      0.2.1
+// @version      0.2.2
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -186,7 +186,7 @@ function waitForElements(selector, maxTries = 20, interval = 500) {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.2.1"
+    version: "0.2.2"
   },
   {
     dev: false,
@@ -221,7 +221,9 @@ globalThis.qb = async () => {
       f(PS, d);
       console.log("qb：已在元素 d 上执行 f 函数。");
     } else {
-      console.error('qb：未找到目标元素 d (最后一个匹配 [class^="_items"] 的元素)。');
+      console.error(
+        'qb：未找到目标元素 d (最后一个匹配 [class^="_items"] 的元素)。'
+      );
     }
   } catch (error) {
     console.error("qb：执行 waitForElements 或后续操作时出错:", error);
@@ -236,7 +238,9 @@ var startPolling = () => {
     const b = [...document.querySelectorAll('[class^="_keyboard"]')].at(-1);
     const currentlyVisible = b && b.style.display === "block";
     if (currentlyVisible && !isKeyboardVisible) {
-      console.log("轮询检查：元素 b 变为可见 (display: block)。触发 debouncedQb...");
+      console.log(
+        "轮询检查：元素 b 变为可见 (display: block)。触发 debouncedQb..."
+      );
       debouncedQb();
       isKeyboardVisible = true;
     } else if (!currentlyVisible && isKeyboardVisible) {
@@ -254,7 +258,10 @@ foreverQuery("._active_1yyur_328, ._jumpBtn_9mtdp_191", async (e) => {
   if (e.className.includes("_jumpBtn_9mtdp_191")) {
     console.log("点击 _jumpBtn_9mtdp_191 元素");
     await sleep(qbDebounceDelay);
-    console.log("等待 250 毫秒后执行 qb");
+    console.log("等待 250 毫秒");
+  }
+  if (e.className.includes("_active_1yyur_328") && e.textContent.trim() !== "完成") {
+    return;
   }
   e.click();
 });
