@@ -2,8 +2,10 @@ import {
   dynamicQuery,
   dynamicQueryAsync,
   foreverQuery,
+  monitorApiRequests,
   mybuild,
   sleep,
+  useStore,
   waitForElements,
   waitForObject,
 } from './utils'
@@ -12,13 +14,15 @@ import { dataManagerInit, useNfts } from './ccmgipDataManager'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.3.0',
+    version: '0.4.0',
   },
   {
     dev: false,
     outdir: 'pub',
   }
 )
+
+const { log } = console
 
 dataManagerInit()
 
@@ -45,7 +49,7 @@ if (
     const nftData = nfts.byName[name]
 
     if (!nftData) {
-      console.log(`未找到藏品数据: ${name}`)
+      log(`未找到藏品数据: ${name}`)
       return
     }
 
@@ -63,7 +67,7 @@ if (
         pointsElement.textContent.replace(/[^0-9.]/g, '')
       )
       if (isNaN(pointValue)) {
-        console.log(`无法解析积分值: ${pointsElement.textContent}`)
+        log(`无法解析积分值: ${pointsElement.textContent}`)
         return
       }
 
@@ -116,7 +120,7 @@ if (
     container.appendChild(item.element)
   })
 
-  console.log('藏品已按价格比例排序完成')
+  log('藏品已按价格比例排序完成')
 }
 
 const replaceBlindDetails = {
@@ -281,18 +285,18 @@ if (location.href.includes('https://ershisi.ccmgip.com/24solar/replaceBlind')) {
   const nfts = await useNfts()
 
   if (!blindData) {
-    console.log('未找到盲盒数据')
+    log('未找到盲盒数据')
   } else {
     // 计算盲盒价值期望
     totalValue = blindData.reduce((acc, e) => {
       const nftData = nfts.byName[e.name]
       if (!nftData) {
-        console.log(`未找到藏品数据: ${e.name}`)
+        log(`未找到藏品数据: ${e.name}`)
         return acc
       }
       return acc + (nftData.on_sale_lowest_price * e.probability) / 10000
     }, 0)
-    console.log(`盲盒价值期望: ${totalValue.toFixed(2)}`)
+    log(`盲盒价值期望: ${totalValue.toFixed(2)}`)
   }
 
   const container = await dynamicQueryAsync(
@@ -312,7 +316,7 @@ if (location.href.includes('https://ershisi.ccmgip.com/24solar/replaceBlind')) {
     const nftData = nfts.byName[name]
 
     if (!nftData) {
-      console.log(`未找到藏品数据: ${name}`)
+      log(`未找到藏品数据: ${name}`)
       return
     }
 
@@ -355,7 +359,7 @@ if (location.href.includes('https://ershisi.ccmgip.com/24solar/replaceBlind')) {
   processedItems.forEach(item => {
     container.appendChild(item.element)
   })
-  console.log('藏品已按市场最低价排序完成')
+  log('藏品已按市场最低价排序完成')
 
   // 添加成本和收益提示
   const blindContent =
@@ -418,7 +422,7 @@ GM_addStyle(`
 `)
 
 // 藏品浏览
-{
+;(async () => {
   const nfts = await useNfts()
   foreverQuery('._normalItem_uqw8m_13', item => {
     if (item.isProcessed) return
@@ -426,7 +430,7 @@ GM_addStyle(`
     const name = item.children[1].textContent.trim()
     const nftData = nfts.byName[name]
     if (!nftData) {
-      console.log(`未找到藏品数据: ${name}`)
+      log(`未找到藏品数据: ${name}`)
       return
     }
     const onSalePrice = nftData.on_sale_lowest_price / 100
@@ -450,4 +454,118 @@ GM_addStyle(`
       `<span class="_helperText">${text}</span>`
     )
   })
-}
+})()
+
+// 专题浏览
+;(async () => {
+  const nfts = await useNfts()
+  foreverQuery('._list_1uodg_269, ._list_swvyv_174', list => {
+    const items = list.children
+    for (const item of items) {
+      const parentElement = item.firstChild
+      const nameElement = parentElement?.querySelector(
+        '[class^="_nameUserHoldTagContainer"], ._titleBox_swvyv_195'
+      )
+
+      if (!nameElement || nameElement.isProcessed) continue
+      nameElement.isProcessed = true
+
+      const name = nameElement?.firstChild?.textContent?.trim()
+      if (!name) continue
+
+      let showOnSalePrice = true
+      if (nameElement.className.includes('_titleBox_swvyv_195')) {
+        showOnSalePrice = false
+      }
+
+      let onSalePrice
+      let l2Price
+      let lastestPrice
+
+      const nftData = nfts.byName[name]
+      if (nftData) {
+        onSalePrice = nftData.on_sale_lowest_price / 100
+        l2Price = nftData.l2_lowest_price / 100
+        lastestPrice = nftData.l2_lastest_price / 100
+
+        const userHold = parseInt(nameElement.lastChild.textContent.trim())
+        if (userHold > 0) {
+          const url = `https://art.ccmgip.com/collection/list?id=${nftData.id}&type=nft&title=${encodeURIComponent(
+            nftData.name
+          )}`
+
+          // Create a button element
+          const detailsButton = document.createElement('button')
+          detailsButton.textContent = '查看藏品'
+          detailsButton.className = '_helperText'
+          detailsButton.style.cursor = 'pointer'
+          detailsButton.addEventListener('click', event => {
+            event.stopPropagation()
+            event.preventDefault()
+            location.href = url
+          })
+          parentElement.appendChild(detailsButton)
+        }
+      } else {
+        // 名字不匹配，可能是分类名
+        const nftDatas = nfts.byCategoryAndName[name]
+        if (!nftDatas) {
+          // 都找不到，直接跳过
+          log(`未找到藏品数据: ${name}`)
+          continue
+        }
+
+        // 将 nftDatas 转为列表之后对其中的数据求平均数
+        const nftDataList = Object.values(nftDatas)
+
+        onSalePrice = nftDataList.reduce(
+          (acc, e) => acc + e.on_sale_lowest_price,
+          0
+        )
+        onSalePrice /= nftDataList.length * 100
+        l2Price = nftDataList.reduce((acc, e) => acc + e.l2_lowest_price, 0)
+        l2Price /= nftDataList.length * 100
+        lastestPrice = nftDataList.reduce(
+          (acc, e) => acc + e.l2_lastest_price,
+          0
+        )
+        lastestPrice /= nftDataList.length * 100
+      }
+
+      const l2PriceIsZero = l2Price === 0
+      onSalePrice = onSalePrice.toFixed(2)
+      l2Price = l2Price.toFixed(2)
+      lastestPrice = lastestPrice.toFixed(2)
+
+      const text = [
+        showOnSalePrice ? `市售价 ${onSalePrice}` : '',
+        l2PriceIsZero
+          ? ''
+          : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
+        `最新成交价 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(
+          2
+        )} x)`,
+      ]
+        .filter(e => e !== '')
+        .join('\n')
+
+      parentElement.insertAdjacentHTML(
+        'beforeend',
+        `<div class="_helperText">${text}</div>`
+      )
+    }
+  })
+})()
+
+// const orderStore = useStore('orderStore', {})
+
+// monitorApiRequests('https://l2-api.ccmgip.com/api/v1/users/me/orders', {
+//   onResponse: async ({ data, response }) => {
+//     if (response.status !== 200) return
+//     log('订单数据:', data)
+//     data.forEach(e => {
+//       const { nftName: name, nfcNumber: number, amount } = e
+//       log(`藏品: ${name}, 编号: ${number}, 价格: ${amount}`)
+//     })
+//   },
+// })

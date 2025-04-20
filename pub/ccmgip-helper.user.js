@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.3.0
+// @version      0.4.0
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -365,7 +365,7 @@ async function useDataSource(config) {
   } = config;
   const checkFrequency = Math.min(
     6e4,
-    Math.max(5e3, refreshInterval * 1e3 / 6)
+    Math.max(5e3, refreshInterval * 1e3 / 2)
   );
   const updateDataForObject = async () => {
     const state = ccmgipData[objectName];
@@ -487,15 +487,18 @@ async function dataManagerInit() {
   globalListen();
   console.log("[CCMGIP] 数据管理器核心已加载");
   useDataSource({
-    apiUrl: "https://data.ccmgip.linlin.world/raw_collections_data?select=id,name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000",
+    apiUrl: "https://data.ccmgip.linlin.world/raw_collections_data?select=id,name,category_name,heat,on_sale_lowest_price,l2_lastest_price,liquid_count,l2_lowest_price,on_sale_count,l2_lastest_sale_time&limit=2000",
     objectName: "nft",
     refreshInterval: 60,
     onDataLoad: (state) => {
       state.data.byName = {};
       state.data.byId = {};
+      state.data.byCategoryAndName = {};
       state.data.forEach((item) => {
         state.data.byName[item.name] = item;
         state.data.byId[item.id] = item;
+        state.data.byCategoryAndName[item.category_name] ||= {};
+        state.data.byCategoryAndName[item.category_name][item.name] = item;
       });
     }
   });
@@ -508,13 +511,14 @@ var useNfts = () => waitForObject("ccmgipData.nft.data", {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.3.0"
+    version: "0.4.0"
   },
   {
     dev: false,
     outdir: "pub"
   }
 );
+var { log } = console;
 dataManagerInit();
 if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity")) {
   const nfts = await useNfts();
@@ -532,7 +536,7 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity"
     const name = nameElement.textContent.trim();
     const nftData = nfts.byName[name];
     if (!nftData) {
-      console.log(`未找到藏品数据: ${name}`);
+      log(`未找到藏品数据: ${name}`);
       return;
     }
     const onSalePrice = nftData.on_sale_lowest_price / 100;
@@ -546,7 +550,7 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity"
         pointsElement.textContent.replace(/[^0-9.]/g, "")
       );
       if (isNaN(pointValue)) {
-        console.log(`无法解析积分值: ${pointsElement.textContent}`);
+        log(`无法解析积分值: ${pointsElement.textContent}`);
         return;
       }
       const l2Price = pointValue / 100;
@@ -583,7 +587,7 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity"
   processedItems.forEach((item) => {
     container.appendChild(item.element);
   });
-  console.log("藏品已按价格比例排序完成");
+  log("藏品已按价格比例排序完成");
 }
 var replaceBlindDetails = {
   "0195f977-54f1-4bf3-b12c-f7efb6c043ec": [
@@ -745,17 +749,17 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/replaceBlind")) {
   let totalValue = null;
   const nfts = await useNfts();
   if (!blindData) {
-    console.log("未找到盲盒数据");
+    log("未找到盲盒数据");
   } else {
     totalValue = blindData.reduce((acc, e) => {
       const nftData = nfts.byName[e.name];
       if (!nftData) {
-        console.log(`未找到藏品数据: ${e.name}`);
+        log(`未找到藏品数据: ${e.name}`);
         return acc;
       }
       return acc + nftData.on_sale_lowest_price * e.probability / 1e4;
     }, 0);
-    console.log(`盲盒价值期望: ${totalValue.toFixed(2)}`);
+    log(`盲盒价值期望: ${totalValue.toFixed(2)}`);
   }
   const container = await dynamicQueryAsync(
     '[class^="replaceBlind_condition-box"]'
@@ -771,7 +775,7 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/replaceBlind")) {
     const name = nameElement.textContent.trim().slice(0, -2);
     const nftData = nfts.byName[name];
     if (!nftData) {
-      console.log(`未找到藏品数据: ${name}`);
+      log(`未找到藏品数据: ${name}`);
       return;
     }
     const onSalePrice = nftData.on_sale_lowest_price / 100;
@@ -801,7 +805,7 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/replaceBlind")) {
   processedItems.forEach((item) => {
     container.appendChild(item.element);
   });
-  console.log("藏品已按市场最低价排序完成");
+  log("藏品已按市场最低价排序完成");
   const blindContent = document.querySelector('[class^="replaceBlind_blind-content"]') || container;
   let consumeCount = null;
   let consumeValue = null;
@@ -845,7 +849,7 @@ GM_addStyle(`
     white-space: pre-wrap;
 }
 `);
-{
+(async () => {
   const nfts = await useNfts();
   foreverQuery("._normalItem_uqw8m_13", (item) => {
     if (item.isProcessed)
@@ -854,7 +858,7 @@ GM_addStyle(`
     const name = item.children[1].textContent.trim();
     const nftData = nfts.byName[name];
     if (!nftData) {
-      console.log(`未找到藏品数据: ${name}`);
+      log(`未找到藏品数据: ${name}`);
       return;
     }
     const onSalePrice = nftData.on_sale_lowest_price / 100;
@@ -872,6 +876,87 @@ GM_addStyle(`
       `<span class="_helperText">${text}</span>`
     );
   });
-}
+})();
+(async () => {
+  const nfts = await useNfts();
+  foreverQuery("._list_1uodg_269, ._list_swvyv_174", (list) => {
+    const items = list.children;
+    for (const item of items) {
+      const parentElement = item.firstChild;
+      const nameElement = parentElement?.querySelector(
+        '[class^="_nameUserHoldTagContainer"], ._titleBox_swvyv_195'
+      );
+      if (!nameElement || nameElement.isProcessed)
+        continue;
+      nameElement.isProcessed = true;
+      const name = nameElement?.firstChild?.textContent?.trim();
+      if (!name)
+        continue;
+      let showOnSalePrice = true;
+      if (nameElement.className.includes("_titleBox_swvyv_195")) {
+        showOnSalePrice = false;
+      }
+      let onSalePrice;
+      let l2Price;
+      let lastestPrice;
+      const nftData = nfts.byName[name];
+      if (nftData) {
+        onSalePrice = nftData.on_sale_lowest_price / 100;
+        l2Price = nftData.l2_lowest_price / 100;
+        lastestPrice = nftData.l2_lastest_price / 100;
+        const userHold = parseInt(nameElement.lastChild.textContent.trim());
+        if (userHold > 0) {
+          const url = `https://art.ccmgip.com/collection/list?id=${nftData.id}&type=nft&title=${encodeURIComponent(
+            nftData.name
+          )}`;
+          const detailsButton = document.createElement("button");
+          detailsButton.textContent = "查看藏品";
+          detailsButton.className = "_helperText";
+          detailsButton.style.cursor = "pointer";
+          detailsButton.addEventListener("click", (event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            location.href = url;
+          });
+          parentElement.appendChild(detailsButton);
+        }
+      } else {
+        const nftDatas = nfts.byCategoryAndName[name];
+        if (!nftDatas) {
+          log(`未找到藏品数据: ${name}`);
+          continue;
+        }
+        const nftDataList = Object.values(nftDatas);
+        onSalePrice = nftDataList.reduce(
+          (acc, e) => acc + e.on_sale_lowest_price,
+          0
+        );
+        onSalePrice /= nftDataList.length * 100;
+        l2Price = nftDataList.reduce((acc, e) => acc + e.l2_lowest_price, 0);
+        l2Price /= nftDataList.length * 100;
+        lastestPrice = nftDataList.reduce(
+          (acc, e) => acc + e.l2_lastest_price,
+          0
+        );
+        lastestPrice /= nftDataList.length * 100;
+      }
+      const l2PriceIsZero = l2Price === 0;
+      onSalePrice = onSalePrice.toFixed(2);
+      l2Price = l2Price.toFixed(2);
+      lastestPrice = lastestPrice.toFixed(2);
+      const text = [
+        showOnSalePrice ? `市售价 ${onSalePrice}` : "",
+        l2PriceIsZero ? "" : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
+        `最新成交价 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(
+          2
+        )} x)`
+      ].filter((e) => e !== "").join("\n");
+      parentElement.insertAdjacentHTML(
+        "beforeend",
+        `<div class="_helperText">${text}</div>`
+      );
+    }
+  });
+})();
 
 })();
