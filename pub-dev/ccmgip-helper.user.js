@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.7.1
+// @version      0.7.2
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -763,592 +763,594 @@ var useNfts = () => waitForObject("ccmgipData.nft.data", {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.7.1"
+    version: "0.7.2"
   },
   {
     dev: false,
     outdir: "pub-dev"
   }
 );
-var { log } = console;
-dataManagerInit();
-orderStore = useStore("orderStore", {});
-unsafeWindow.orderStore = orderStore;
-window.orderStore = orderStore;
-if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity")) {
-  const nfts = await useNfts();
-  const container = await dynamicQueryAsync(
-    '[class^="donationActivity_box-content"]'
-  );
-  const items = await waitForElements(
-    '[class^="donationActivity_donationItem"]'
-  );
-  const processedItems = [];
-  items.forEach((item) => {
-    const nameElement = item.querySelector('[class^="donationActivity_row2"]');
-    if (!nameElement)
-      return;
-    const name = nameElement.textContent.trim();
-    const nftData = nfts.byName[name];
-    if (!nftData) {
-      log(`未找到藏品数据: ${name}`);
-      return;
-    }
-    const onSalePrice = nftData.on_sale_lowest_price / 100;
-    const pointsElement = item.querySelector(
-      '[class^="donationActivity_points"]'
+try {
+  const { log } = console;
+  dataManagerInit();
+  orderStore = useStore("orderStore", {});
+  unsafeWindow.orderStore = orderStore;
+  window.orderStore = orderStore;
+  if (location.href.includes(
+    "https://ershisi.ccmgip.com/24solar/donationActivity"
+  )) {
+    const nfts = await useNfts();
+    const container = await dynamicQueryAsync(
+      '[class^="donationActivity_box-content"]'
     );
-    if (pointsElement) {
-      let ratio = "无法计算";
-      let ratioValue = Infinity;
-      const pointValue = parseFloat(
-        pointsElement.textContent.replace(/[^0-9.]/g, "")
-      );
-      if (isNaN(pointValue)) {
-        log(`无法解析积分值: ${pointsElement.textContent}`);
+    const items = await waitForElements(
+      '[class^="donationActivity_donationItem"]'
+    );
+    const processedItems = [];
+    items.forEach((item) => {
+      const nameElement = item.querySelector('[class^="donationActivity_row2"]');
+      if (!nameElement)
+        return;
+      const name = nameElement.textContent.trim();
+      const nftData = nfts.byName[name];
+      if (!nftData) {
+        log(`未找到藏品数据: ${name}`);
         return;
       }
-      const l2Price = pointValue / 100;
-      if (l2Price && l2Price > 0) {
-        ratioValue = onSalePrice / l2Price;
-        ratio = `${onSalePrice} / ${l2Price} = ${ratioValue.toFixed(2)}`;
-      } else {
-        ratio = `${onSalePrice} / 0 = ∞`;
+      const onSalePrice = nftData.on_sale_lowest_price / 100;
+      const pointsElement = item.querySelector(
+        '[class^="donationActivity_points"]'
+      );
+      if (pointsElement) {
+        let ratio = "无法计算";
+        let ratioValue = Infinity;
+        const pointValue = parseFloat(
+          pointsElement.textContent.replace(/[^0-9.]/g, "")
+        );
+        if (isNaN(pointValue)) {
+          log(`无法解析积分值: ${pointsElement.textContent}`);
+          return;
+        }
+        const l2Price = pointValue / 100;
+        if (l2Price && l2Price > 0) {
+          ratioValue = onSalePrice / l2Price;
+          ratio = `${onSalePrice} / ${l2Price} = ${ratioValue.toFixed(2)}`;
+        } else {
+          ratio = `${onSalePrice} / 0 = ∞`;
+        }
+        const ratioSpan = document.createElement("span");
+        ratioSpan.className = "price-ratio";
+        ratioSpan.style.fontSize = "12px";
+        ratioSpan.style.display = "block";
+        ratioSpan.style.color = "#ff9900";
+        ratioSpan.style.marginLeft = "5px";
+        ratioSpan.textContent = ratio;
+        pointsElement.appendChild(ratioSpan);
+        processedItems.push({
+          element: item,
+          ratioValue
+        });
       }
-      const ratioSpan = document.createElement("span");
-      ratioSpan.className = "price-ratio";
-      ratioSpan.style.fontSize = "12px";
-      ratioSpan.style.display = "block";
-      ratioSpan.style.color = "#ff9900";
-      ratioSpan.style.marginLeft = "5px";
-      ratioSpan.textContent = ratio;
-      pointsElement.appendChild(ratioSpan);
+    });
+    processedItems.sort((a, b) => a.ratioValue - b.ratioValue);
+    const subtitleElement = document.querySelector(
+      '[class^="donationActivity_subtitle"]'
+    );
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+    if (subtitleElement) {
+      container.appendChild(subtitleElement.cloneNode(true));
+    }
+    processedItems.forEach((item) => {
+      container.appendChild(item.element);
+    });
+    log("藏品已按价格比例排序完成");
+  }
+  const replaceBlindDetails = {
+    // 盲盒置换特别活动九
+    "0195f977-54f1-4bf3-b12c-f7efb6c043ec": [
+      {
+        name: "树色平远图",
+        probability: 15
+      },
+      {
+        name: "鱼石图",
+        probability: 15
+      },
+      {
+        name: "汉宫观潮图",
+        probability: 15
+      },
+      {
+        name: "花鸟图",
+        probability: 15
+      },
+      {
+        name: "调琴啜茗图",
+        probability: 15
+      },
+      {
+        name: "忒PANDA·复古",
+        probability: 0.1
+      },
+      {
+        name: "雪景寒林图",
+        probability: 0.5
+      },
+      {
+        name: "青铜面具",
+        probability: 0.5
+      },
+      {
+        name: "杂花图",
+        probability: 0.5
+      },
+      {
+        name: "隶书道德经",
+        probability: 0.5
+      },
+      {
+        name: "青铜扭头跪坐人像",
+        probability: 0.5
+      },
+      {
+        name: "猴猫图",
+        probability: 0.5
+      },
+      {
+        name: "武侯高卧图",
+        probability: 1
+      },
+      {
+        name: "倪宽赞",
+        probability: 0.5
+      },
+      {
+        name: "象尊",
+        probability: 0.5
+      },
+      {
+        name: "鎏金犀牛",
+        probability: 1
+      },
+      {
+        name: "鼓吹骑俑",
+        probability: 0.9
+      },
+      {
+        name: "蜀川胜概图",
+        probability: 1
+      },
+      {
+        name: "虎钮如意云纹青玉握",
+        probability: 3
+      },
+      {
+        name: "白釉划花褐彩牡丹纹瓷腰圆枕",
+        probability: 4
+      },
+      {
+        name: "瑶岛仙真图",
+        probability: 5
+      },
+      {
+        name: "蜀山行旅图",
+        probability: 5
+      }
+    ],
+    // 盲盒置换六十七
+    "019569e1-4d7f-4965-b3e7-b68c2ce8f30a": [
+      {
+        name: "树色平远图",
+        probability: 15
+      },
+      {
+        name: "鱼石图",
+        probability: 15
+      },
+      {
+        name: "汉宫观潮图",
+        probability: 15
+      },
+      {
+        name: "花鸟图",
+        probability: 15
+      },
+      {
+        name: "明皇弈棋图",
+        probability: 10
+      },
+      {
+        name: "忒PANDA·赛博",
+        probability: 0.1
+      },
+      {
+        name: "雪景寒林图",
+        probability: 1
+      },
+      {
+        name: "青铜面具",
+        probability: 1
+      },
+      {
+        name: "隶书道德经",
+        probability: 1
+      },
+      {
+        name: "青铜扭头跪坐人像",
+        probability: 1
+      },
+      {
+        name: "猴猫图",
+        probability: 1
+      },
+      {
+        name: "鼓吹骑俑",
+        probability: 3.1
+      },
+      {
+        name: "蜀川胜概图",
+        probability: 3
+      },
+      {
+        name: "虎钮如意云纹青玉握",
+        probability: 3
+      },
+      {
+        name: "双凤瓜棱盒",
+        probability: 16
+      }
+    ],
+    // 盲盒置换六十六
+    "01954583-24a5-47e3-8ed3-6a5863fabc5d": [
+      {
+        name: "树色平远图",
+        probability: 15
+      },
+      {
+        name: "鱼石图",
+        probability: 15
+      },
+      {
+        name: "汉宫观潮图",
+        probability: 15
+      },
+      {
+        name: "花鸟图",
+        probability: 15
+      },
+      {
+        name: "明皇弈棋图",
+        probability: 10
+      },
+      {
+        name: "忒PANDA·赛博",
+        probability: 0.1
+      },
+      {
+        name: "千里江山图",
+        probability: 0.2
+      },
+      {
+        name: "步辇图",
+        probability: 0.5
+      },
+      {
+        name: "韩熙载夜宴图",
+        probability: 0.2
+      },
+      {
+        name: "五牛图",
+        probability: 0.2
+      },
+      {
+        name: "清明上河图",
+        probability: 0.2
+      },
+      {
+        name: "唐宫仕女图-虢国夫人游春图",
+        probability: 0.5
+      },
+      {
+        name: "雪景寒林图",
+        probability: 0.5
+      },
+      {
+        name: "青铜面具",
+        probability: 0.5
+      },
+      {
+        name: "乾隆款黄釉青花莲托寿碗",
+        probability: 0.5
+      },
+      {
+        name: "隶书道德经",
+        probability: 0.5
+      },
+      {
+        name: "青铜扭头跪坐人像",
+        probability: 0.5
+      },
+      {
+        name: "猴猫图",
+        probability: 0.5
+      },
+      {
+        name: "二马图",
+        probability: 1
+      },
+      {
+        name: "杜秋图",
+        probability: 5
+      },
+      {
+        name: "鼓吹骑俑",
+        probability: 1
+      },
+      {
+        name: "剔红山水人物纹瓶",
+        probability: 1
+      },
+      {
+        name: "上苑春游图",
+        probability: 5
+      },
+      {
+        name: "鸭形铜砚滴",
+        probability: 5.3
+      },
+      {
+        name: "三彩折枝牡丹纹枕",
+        probability: 5
+      },
+      {
+        name: "蜀川胜概图",
+        probability: 1
+      },
+      {
+        name: "虎钮如意云纹青玉握",
+        probability: 1
+      }
+    ]
+  };
+  if (location.href.includes("https://ershisi.ccmgip.com/24solar/replaceBlind")) {
+    const blindId = new URLSearchParams(location.search).get("id");
+    const blindData = replaceBlindDetails[blindId];
+    let totalValue = null;
+    const nfts = await useNfts();
+    if (!blindData) {
+      log("未找到盲盒数据");
+    } else {
+      totalValue = blindData.reduce((acc, e) => {
+        const nftData = nfts.byName[e.name];
+        if (!nftData) {
+          log(`未找到藏品数据: ${e.name}`);
+          return acc;
+        }
+        return acc + nftData.on_sale_lowest_price * e.probability / 1e4;
+      }, 0);
+      log(`盲盒价值期望: ${totalValue.toFixed(2)}`);
+    }
+    const container = await dynamicQueryAsync(
+      '[class^="replaceBlind_condition-box"]'
+    );
+    const items = await waitForElements('[class^="replaceBlind_displace-item"]');
+    const processedItems = [];
+    items.forEach((item) => {
+      const nameElement = item.querySelector(
+        '[class^="replaceBlind_displace-name"]'
+      );
+      if (!nameElement)
+        return;
+      const name = nameElement.textContent.trim().slice(0, -2);
+      const nftData = nfts.byName[name];
+      if (!nftData) {
+        log(`未找到藏品数据: ${name}`);
+        return;
+      }
+      const onSalePrice = nftData.on_sale_lowest_price / 100;
+      const priceSpan = document.createElement("span");
+      priceSpan.className = "on-sale-price";
+      priceSpan.style.fontSize = "12px";
+      priceSpan.style.display = "inline-block";
+      priceSpan.style.color = "#ff9900";
+      priceSpan.style.marginLeft = "5px";
+      priceSpan.textContent = onSalePrice;
+      nameElement.appendChild(priceSpan);
       processedItems.push({
         element: item,
-        ratioValue
+        price: onSalePrice
       });
-    }
-  });
-  processedItems.sort((a, b) => a.ratioValue - b.ratioValue);
-  const subtitleElement = document.querySelector(
-    '[class^="donationActivity_subtitle"]'
-  );
-  while (container.firstChild) {
-    container.removeChild(container.firstChild);
-  }
-  if (subtitleElement) {
-    container.appendChild(subtitleElement.cloneNode(true));
-  }
-  processedItems.forEach((item) => {
-    container.appendChild(item.element);
-  });
-  log("藏品已按价格比例排序完成");
-}
-var replaceBlindDetails = {
-  // 盲盒置换特别活动九
-  "0195f977-54f1-4bf3-b12c-f7efb6c043ec": [
-    {
-      name: "树色平远图",
-      probability: 15
-    },
-    {
-      name: "鱼石图",
-      probability: 15
-    },
-    {
-      name: "汉宫观潮图",
-      probability: 15
-    },
-    {
-      name: "花鸟图",
-      probability: 15
-    },
-    {
-      name: "调琴啜茗图",
-      probability: 15
-    },
-    {
-      name: "忒PANDA·复古",
-      probability: 0.1
-    },
-    {
-      name: "雪景寒林图",
-      probability: 0.5
-    },
-    {
-      name: "青铜面具",
-      probability: 0.5
-    },
-    {
-      name: "杂花图",
-      probability: 0.5
-    },
-    {
-      name: "隶书道德经",
-      probability: 0.5
-    },
-    {
-      name: "青铜扭头跪坐人像",
-      probability: 0.5
-    },
-    {
-      name: "猴猫图",
-      probability: 0.5
-    },
-    {
-      name: "武侯高卧图",
-      probability: 1
-    },
-    {
-      name: "倪宽赞",
-      probability: 0.5
-    },
-    {
-      name: "象尊",
-      probability: 0.5
-    },
-    {
-      name: "鎏金犀牛",
-      probability: 1
-    },
-    {
-      name: "鼓吹骑俑",
-      probability: 0.9
-    },
-    {
-      name: "蜀川胜概图",
-      probability: 1
-    },
-    {
-      name: "虎钮如意云纹青玉握",
-      probability: 3
-    },
-    {
-      name: "白釉划花褐彩牡丹纹瓷腰圆枕",
-      probability: 4
-    },
-    {
-      name: "瑶岛仙真图",
-      probability: 5
-    },
-    {
-      name: "蜀山行旅图",
-      probability: 5
-    }
-  ],
-  // 盲盒置换六十七
-  "019569e1-4d7f-4965-b3e7-b68c2ce8f30a": [
-    {
-      name: "树色平远图",
-      probability: 15
-    },
-    {
-      name: "鱼石图",
-      probability: 15
-    },
-    {
-      name: "汉宫观潮图",
-      probability: 15
-    },
-    {
-      name: "花鸟图",
-      probability: 15
-    },
-    {
-      name: "明皇弈棋图",
-      probability: 10
-    },
-    {
-      name: "忒PANDA·赛博",
-      probability: 0.1
-    },
-    {
-      name: "雪景寒林图",
-      probability: 1
-    },
-    {
-      name: "青铜面具",
-      probability: 1
-    },
-    {
-      name: "隶书道德经",
-      probability: 1
-    },
-    {
-      name: "青铜扭头跪坐人像",
-      probability: 1
-    },
-    {
-      name: "猴猫图",
-      probability: 1
-    },
-    {
-      name: "鼓吹骑俑",
-      probability: 3.1
-    },
-    {
-      name: "蜀川胜概图",
-      probability: 3
-    },
-    {
-      name: "虎钮如意云纹青玉握",
-      probability: 3
-    },
-    {
-      name: "双凤瓜棱盒",
-      probability: 16
-    }
-  ],
-  // 盲盒置换六十六
-  "01954583-24a5-47e3-8ed3-6a5863fabc5d": [
-    {
-      name: "树色平远图",
-      probability: 15
-    },
-    {
-      name: "鱼石图",
-      probability: 15
-    },
-    {
-      name: "汉宫观潮图",
-      probability: 15
-    },
-    {
-      name: "花鸟图",
-      probability: 15
-    },
-    {
-      name: "明皇弈棋图",
-      probability: 10
-    },
-    {
-      name: "忒PANDA·赛博",
-      probability: 0.1
-    },
-    {
-      name: "千里江山图",
-      probability: 0.2
-    },
-    {
-      name: "步辇图",
-      probability: 0.5
-    },
-    {
-      name: "韩熙载夜宴图",
-      probability: 0.2
-    },
-    {
-      name: "五牛图",
-      probability: 0.2
-    },
-    {
-      name: "清明上河图",
-      probability: 0.2
-    },
-    {
-      name: "唐宫仕女图-虢国夫人游春图",
-      probability: 0.5
-    },
-    {
-      name: "雪景寒林图",
-      probability: 0.5
-    },
-    {
-      name: "青铜面具",
-      probability: 0.5
-    },
-    {
-      name: "乾隆款黄釉青花莲托寿碗",
-      probability: 0.5
-    },
-    {
-      name: "隶书道德经",
-      probability: 0.5
-    },
-    {
-      name: "青铜扭头跪坐人像",
-      probability: 0.5
-    },
-    {
-      name: "猴猫图",
-      probability: 0.5
-    },
-    {
-      name: "二马图",
-      probability: 1
-    },
-    {
-      name: "杜秋图",
-      probability: 5
-    },
-    {
-      name: "鼓吹骑俑",
-      probability: 1
-    },
-    {
-      name: "剔红山水人物纹瓶",
-      probability: 1
-    },
-    {
-      name: "上苑春游图",
-      probability: 5
-    },
-    {
-      name: "鸭形铜砚滴",
-      probability: 5.3
-    },
-    {
-      name: "三彩折枝牡丹纹枕",
-      probability: 5
-    },
-    {
-      name: "蜀川胜概图",
-      probability: 1
-    },
-    {
-      name: "虎钮如意云纹青玉握",
-      probability: 1
-    }
-  ]
-};
-if (location.href.includes("https://ershisi.ccmgip.com/24solar/replaceBlind")) {
-  const blindId = new URLSearchParams(location.search).get("id");
-  const blindData = replaceBlindDetails[blindId];
-  let totalValue = null;
-  const nfts = await useNfts();
-  if (!blindData) {
-    log("未找到盲盒数据");
-  } else {
-    totalValue = blindData.reduce((acc, e) => {
-      const nftData = nfts.byName[e.name];
-      if (!nftData) {
-        log(`未找到藏品数据: ${e.name}`);
-        return acc;
-      }
-      return acc + nftData.on_sale_lowest_price * e.probability / 1e4;
-    }, 0);
-    log(`盲盒价值期望: ${totalValue.toFixed(2)}`);
-  }
-  const container = await dynamicQueryAsync(
-    '[class^="replaceBlind_condition-box"]'
-  );
-  const items = await waitForElements('[class^="replaceBlind_displace-item"]');
-  const processedItems = [];
-  items.forEach((item) => {
-    const nameElement = item.querySelector(
-      '[class^="replaceBlind_displace-name"]'
-    );
-    if (!nameElement)
-      return;
-    const name = nameElement.textContent.trim().slice(0, -2);
-    const nftData = nfts.byName[name];
-    if (!nftData) {
-      log(`未找到藏品数据: ${name}`);
-      return;
-    }
-    const onSalePrice = nftData.on_sale_lowest_price / 100;
-    const priceSpan = document.createElement("span");
-    priceSpan.className = "on-sale-price";
-    priceSpan.style.fontSize = "12px";
-    priceSpan.style.display = "inline-block";
-    priceSpan.style.color = "#ff9900";
-    priceSpan.style.marginLeft = "5px";
-    priceSpan.textContent = onSalePrice;
-    nameElement.appendChild(priceSpan);
-    processedItems.push({
-      element: item,
-      price: onSalePrice
     });
-  });
-  processedItems.sort((a, b) => a.price - b.price);
-  const subtitleElement = document.querySelector(
-    '[class^="replaceBlind_subtitle"]'
-  );
-  while (container.firstChild) {
-    container.removeChild(container.firstChild);
-  }
-  if (subtitleElement) {
-    container.appendChild(subtitleElement.cloneNode(true));
-  }
-  processedItems.forEach((item) => {
-    container.appendChild(item.element);
-  });
-  log("藏品已按市场最低价排序完成");
-  const blindContent = document.querySelector('[class^="replaceBlind_blind-content"]') || container;
-  let consumeCount = null;
-  let consumeValue = null;
-  let blindCount = null;
-  const blindRuleElement = document.querySelector(
-    '[class^="replaceBlind_rule-card"]'
-  );
-  const blindRuleText = blindRuleElement?.textContent?.trim();
-  const match = blindRuleText?.match(/任意不同的(\d+)份来置换(\d+)份/);
-  if (match) {
-    consumeCount = parseInt(match[1]);
-    blindCount = parseInt(match[2]);
-  }
-  if (subtitleElement) {
-    const consumeItems = processedItems.slice(0, consumeCount);
-    consumeValue = consumeItems.reduce((acc, item) => acc + item.price, 0);
-    const consumeElement = document.createElement("div");
-    consumeElement.className = "consume-value";
-    consumeElement.style.fontSize = "16px";
-    consumeElement.style.color = "#ff9900";
-    consumeElement.style.marginTop = "10px";
-    consumeElement.textContent = `置换成本: ${consumeValue.toFixed(2)}`;
-    blindContent.appendChild(consumeElement);
-  }
-  if (totalValue) {
-    const valueExpectationElement = document.createElement("div");
-    valueExpectationElement.className = "value-expectation";
-    valueExpectationElement.style.fontSize = "16px";
-    valueExpectationElement.style.color = "#ff9900";
-    valueExpectationElement.style.marginTop = "10px";
-    valueExpectationElement.textContent = `盲盒价值期望: ${totalValue.toFixed(
-      2
-    )}`;
-    blindContent.appendChild(valueExpectationElement);
-    if (consumeCount && consumeValue && blindCount) {
-      const profitElement = document.createElement("div");
-      profitElement.className = "profit-value";
-      profitElement.style.fontSize = "16px";
-      profitElement.style.color = "#ff9900";
-      profitElement.style.marginTop = "10px";
-      const profitValue = totalValue * blindCount - consumeValue;
-      profitElement.textContent = `置换收益: ${profitValue.toFixed(2)}`;
-      blindContent.appendChild(profitElement);
+    processedItems.sort((a, b) => a.price - b.price);
+    const subtitleElement = document.querySelector(
+      '[class^="replaceBlind_subtitle"]'
+    );
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+    if (subtitleElement) {
+      container.appendChild(subtitleElement.cloneNode(true));
+    }
+    processedItems.forEach((item) => {
+      container.appendChild(item.element);
+    });
+    log("藏品已按市场最低价排序完成");
+    const blindContent = document.querySelector('[class^="replaceBlind_blind-content"]') || container;
+    let consumeCount = null;
+    let consumeValue = null;
+    let blindCount = null;
+    const blindRuleElement = document.querySelector(
+      '[class^="replaceBlind_rule-card"]'
+    );
+    const blindRuleText = blindRuleElement?.textContent?.trim();
+    const match = blindRuleText?.match(/任意不同的(\d+)份来置换(\d+)份/);
+    if (match) {
+      consumeCount = parseInt(match[1]);
+      blindCount = parseInt(match[2]);
+    }
+    if (subtitleElement) {
+      const consumeItems = processedItems.slice(0, consumeCount);
+      consumeValue = consumeItems.reduce((acc, item) => acc + item.price, 0);
+      const consumeElement = document.createElement("div");
+      consumeElement.className = "consume-value";
+      consumeElement.style.fontSize = "16px";
+      consumeElement.style.color = "#ff9900";
+      consumeElement.style.marginTop = "10px";
+      consumeElement.textContent = `置换成本: ${consumeValue.toFixed(2)}`;
+      blindContent.appendChild(consumeElement);
+    }
+    if (totalValue) {
+      const valueExpectationElement = document.createElement("div");
+      valueExpectationElement.className = "value-expectation";
+      valueExpectationElement.style.fontSize = "16px";
+      valueExpectationElement.style.color = "#ff9900";
+      valueExpectationElement.style.marginTop = "10px";
+      valueExpectationElement.textContent = `盲盒价值期望: ${totalValue.toFixed(
+        2
+      )}`;
+      blindContent.appendChild(valueExpectationElement);
+      if (consumeCount && consumeValue && blindCount) {
+        const profitElement = document.createElement("div");
+        profitElement.className = "profit-value";
+        profitElement.style.fontSize = "16px";
+        profitElement.style.color = "#ff9900";
+        profitElement.style.marginTop = "10px";
+        const profitValue = totalValue * blindCount - consumeValue;
+        profitElement.textContent = `置换收益: ${profitValue.toFixed(2)}`;
+        blindContent.appendChild(profitElement);
+      }
     }
   }
-}
-GM_addStyle(`
+  GM_addStyle(`
 ._helperText {
     color: #ff9900;
     white-space: pre-wrap;
 }
 `);
-(async () => {
-  const nfts = await useNfts();
-  const orders = orderStore.value;
-  foreverQuery("._normalItem_uqw8m_13", (item) => {
-    if (item.isProcessed)
-      return;
-    item.isProcessed = true;
-    const name = item.children[1].textContent.trim();
-    const nftData = nfts.byName[name];
-    if (!nftData) {
-      log(`未找到藏品数据: ${name}`);
-      return;
-    }
-    const onSalePrice = nftData.on_sale_lowest_price / 100;
-    const l2Price = nftData.l2_lowest_price / 100;
-    const lastestPrice = nftData.l2_lastest_price / 100;
-    let buyPrice = null;
-    let offerPrice = null;
-    const nftOrders = orders[name];
-    if (nftOrders) {
-      const { offer, ...buys } = nftOrders;
-      if (offer) {
-        offerPrice = offer / 100;
-      }
-      const buysCount = Object.keys(buys).length;
-      if (buysCount > 0) {
-        const buysSum = Object.values(buys).reduce((acc, e) => acc + e, 0);
-        buyPrice = buysSum / buysCount / 100;
-      }
-    }
-    const text = [
-      `市售价 ${onSalePrice} (${(onSalePrice * 0.95).toFixed(2)})`,
-      l2Price === 0 ? "" : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
-      `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`,
-      buyPrice ? `买入均 ${buyPrice.toFixed(2)} (${(onSalePrice / buyPrice).toFixed(2)} x)` : "",
-      offerPrice ? `已寄售 ${offerPrice} (${(onSalePrice / offerPrice).toFixed(2)} x)` : ""
-    ].filter((e) => e !== "").join("\n");
-    item.insertAdjacentHTML(
-      "beforeend",
-      `<span class="_helperText">${text}</span>`
-    );
-  });
-})();
-(async () => {
-  const nfts = await useNfts();
-  foreverQuery("._list_1uodg_269, ._list_swvyv_174", (list) => {
-    const items = list.children;
-    for (const item of items) {
-      const parentElement = item.firstChild;
-      const nameElement = parentElement?.querySelector(
-        '[class^="_nameUserHoldTagContainer"], ._titleBox_swvyv_195'
-      );
-      if (!nameElement || nameElement.isProcessed)
-        continue;
-      nameElement.isProcessed = true;
-      const name = nameElement?.firstChild?.textContent?.trim();
-      if (!name)
-        continue;
-      let showOnSalePrice = true;
-      if (nameElement.className.includes("_titleBox_swvyv_195")) {
-        showOnSalePrice = false;
-      }
-      let onSalePrice;
-      let l2Price;
-      let lastestPrice;
+  (async () => {
+    const nfts = await useNfts();
+    const orders = orderStore.value;
+    foreverQuery("._normalItem_uqw8m_13", (item) => {
+      if (item.isProcessed)
+        return;
+      item.isProcessed = true;
+      const name = item.children[1].textContent.trim();
       const nftData = nfts.byName[name];
-      if (nftData) {
-        onSalePrice = nftData.on_sale_lowest_price / 100;
-        l2Price = nftData.l2_lowest_price / 100;
-        lastestPrice = nftData.l2_lastest_price / 100;
-        const userHold = parseInt(nameElement.lastChild.textContent.trim());
-        if (userHold > 0) {
-          const url = `https://art.ccmgip.com/collection/list?id=${nftData.id}&type=nft&title=${encodeURIComponent(
-            nftData.name
-          )}`;
-          const detailsButton = document.createElement("button");
-          detailsButton.textContent = "查看藏品";
-          detailsButton.className = "_helperText";
-          detailsButton.style.cursor = "pointer";
-          detailsButton.addEventListener("click", (event) => {
-            event.stopPropagation();
-            event.preventDefault();
-            location.href = url;
-          });
-          parentElement.appendChild(detailsButton);
-        }
-      } else {
-        const nftDatas = nfts.byCategoryAndName[name];
-        if (!nftDatas) {
-          log(`未找到藏品数据: ${name}`);
-          continue;
-        }
-        const nftDataList = Object.values(nftDatas);
-        onSalePrice = nftDataList.reduce(
-          (acc, e) => acc + e.on_sale_lowest_price,
-          0
-        );
-        onSalePrice /= nftDataList.length * 100;
-        l2Price = nftDataList.reduce((acc, e) => acc + e.l2_lowest_price, 0);
-        l2Price /= nftDataList.length * 100;
-        lastestPrice = nftDataList.reduce(
-          (acc, e) => acc + e.l2_lastest_price,
-          0
-        );
-        lastestPrice /= nftDataList.length * 100;
+      if (!nftData) {
+        log(`未找到藏品数据: ${name}`);
+        return;
       }
-      const l2PriceIsZero = l2Price === 0;
-      onSalePrice = onSalePrice.toFixed(2);
-      l2Price = l2Price.toFixed(2);
-      lastestPrice = lastestPrice.toFixed(2);
+      const onSalePrice = nftData.on_sale_lowest_price / 100;
+      const l2Price = nftData.l2_lowest_price / 100;
+      const lastestPrice = nftData.l2_lastest_price / 100;
+      let buyPrice = null;
+      let offerPrice = null;
+      const nftOrders = orders[name];
+      if (nftOrders) {
+        const { offer, ...buys } = nftOrders;
+        if (offer) {
+          offerPrice = offer / 100;
+        }
+        const buysCount = Object.keys(buys).length;
+        if (buysCount > 0) {
+          const buysSum = Object.values(buys).reduce((acc, e) => acc + e, 0);
+          buyPrice = buysSum / buysCount / 100;
+        }
+      }
       const text = [
-        showOnSalePrice ? `市售价 ${onSalePrice} (${(onSalePrice * 0.95).toFixed(2)})` : "",
-        l2PriceIsZero ? "" : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
-        `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`
+        `市售价 ${onSalePrice} (${(onSalePrice * 0.95).toFixed(2)})`,
+        l2Price === 0 ? "" : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
+        `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`,
+        buyPrice ? `买入均 ${buyPrice.toFixed(2)} (${(onSalePrice / buyPrice).toFixed(2)} x)` : "",
+        offerPrice ? `已寄售 ${offerPrice} (${(onSalePrice / offerPrice).toFixed(2)} x)` : ""
       ].filter((e) => e !== "").join("\n");
-      parentElement.insertAdjacentHTML(
+      item.insertAdjacentHTML(
         "beforeend",
-        `<div class="_helperText">${text}</div>`
+        `<span class="_helperText">${text}</span>`
       );
-    }
-  });
-})();
-try {
+    });
+  })();
+  (async () => {
+    const nfts = await useNfts();
+    foreverQuery("._list_1uodg_269, ._list_swvyv_174", (list) => {
+      const items = list.children;
+      for (const item of items) {
+        const parentElement = item.firstChild;
+        const nameElement = parentElement?.querySelector(
+          '[class^="_nameUserHoldTagContainer"], ._titleBox_swvyv_195'
+        );
+        if (!nameElement || nameElement.isProcessed)
+          continue;
+        nameElement.isProcessed = true;
+        const name = nameElement?.firstChild?.textContent?.trim();
+        if (!name)
+          continue;
+        let showOnSalePrice = true;
+        if (nameElement.className.includes("_titleBox_swvyv_195")) {
+          showOnSalePrice = false;
+        }
+        let onSalePrice;
+        let l2Price;
+        let lastestPrice;
+        const nftData = nfts.byName[name];
+        if (nftData) {
+          onSalePrice = nftData.on_sale_lowest_price / 100;
+          l2Price = nftData.l2_lowest_price / 100;
+          lastestPrice = nftData.l2_lastest_price / 100;
+          const userHold = parseInt(nameElement.lastChild.textContent.trim());
+          if (userHold > 0) {
+            const url = `https://art.ccmgip.com/collection/list?id=${nftData.id}&type=nft&title=${encodeURIComponent(
+              nftData.name
+            )}`;
+            const detailsButton = document.createElement("button");
+            detailsButton.textContent = "查看藏品";
+            detailsButton.className = "_helperText";
+            detailsButton.style.cursor = "pointer";
+            detailsButton.addEventListener("click", (event) => {
+              event.stopPropagation();
+              event.preventDefault();
+              location.href = url;
+            });
+            parentElement.appendChild(detailsButton);
+          }
+        } else {
+          const nftDatas = nfts.byCategoryAndName[name];
+          if (!nftDatas) {
+            log(`未找到藏品数据: ${name}`);
+            continue;
+          }
+          const nftDataList = Object.values(nftDatas);
+          onSalePrice = nftDataList.reduce(
+            (acc, e) => acc + e.on_sale_lowest_price,
+            0
+          );
+          onSalePrice /= nftDataList.length * 100;
+          l2Price = nftDataList.reduce((acc, e) => acc + e.l2_lowest_price, 0);
+          l2Price /= nftDataList.length * 100;
+          lastestPrice = nftDataList.reduce(
+            (acc, e) => acc + e.l2_lastest_price,
+            0
+          );
+          lastestPrice /= nftDataList.length * 100;
+        }
+        const l2PriceIsZero = l2Price === 0;
+        onSalePrice = onSalePrice.toFixed(2);
+        l2Price = l2Price.toFixed(2);
+        lastestPrice = lastestPrice.toFixed(2);
+        const text = [
+          showOnSalePrice ? `市售价 ${onSalePrice} (${(onSalePrice * 0.95).toFixed(2)})` : "",
+          l2PriceIsZero ? "" : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
+          `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`
+        ].filter((e) => e !== "").join("\n");
+        parentElement.insertAdjacentHTML(
+          "beforeend",
+          `<div class="_helperText">${text}</div>`
+        );
+      }
+    });
+  })();
   monitorApiRequests("https://l2-api.ccmgip.com/api/v1/users/me/orders", {
     onResponse: async ({ data, response }) => {
       if (response.status !== 200)
@@ -1413,8 +1415,7 @@ try {
     }
   });
 } catch (e) {
-  log("监控 API 失败:", e);
-  alert("监控 API 失败，请检查控制台");
+  alert("发生错误: " + e);
 }
 
 })();
