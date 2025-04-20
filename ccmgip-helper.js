@@ -13,7 +13,7 @@ import { dataManagerInit, useNfts } from './ccmgipDataManager'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.6.0',
+    version: '0.7.0',
   },
   {
     dev: false,
@@ -582,7 +582,7 @@ GM_addStyle(`
     }
 
     const text = [
-      `市售价 ${onSalePrice}`,
+      `市售价 ${onSalePrice} (${(onSalePrice * 0.95).toFixed(2)})`,
       l2Price === 0
         ? ''
         : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
@@ -686,7 +686,9 @@ GM_addStyle(`
       lastestPrice = lastestPrice.toFixed(2)
 
       const text = [
-        showOnSalePrice ? `市售价 ${onSalePrice}` : '',
+        showOnSalePrice
+          ? `市售价 ${onSalePrice} (${(onSalePrice * 0.95).toFixed(2)})`
+          : '',
         l2PriceIsZero
           ? ''
           : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
