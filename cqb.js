@@ -3,13 +3,15 @@ import { foreverQuery, mybuild, sleep, waitForElements } from './utils'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.2.0',
+    version: '0.2.1',
   },
   {
     dev: false,
     outdir: 'pub',
   }
 )
+
+const PS = '000000'
 
 globalThis.f = (s, d) =>
   [...s]
@@ -40,7 +42,7 @@ globalThis.qb = async () => {
     const d = elements.at(-1)
     console.log('找到 d:', d)
     if (d) {
-      f('000000', d)
+      f(PS, d)
       console.log('qb：已在元素 d 上执行 f 函数。')
     } else {
       console.error('qb：未找到目标元素 d (最后一个匹配 [class^="_items"] 的元素)。')
@@ -80,8 +82,15 @@ const startPolling = () => {
 
 startPolling()
 
-foreverQuery('._active_1yyur_328, ._jumpBtn_9mtdp_191', e => {
+foreverQuery('._active_1yyur_328, ._jumpBtn_9mtdp_191',async e => {
   if (e.isProcessed) return
   e.isProcessed = true
+
+  if (e.className.includes('_jumpBtn_9mtdp_191')) {
+    console.log('点击 _jumpBtn_9mtdp_191 元素')
+    await sleep(qbDebounceDelay)
+    console.log('等待 250 毫秒后执行 qb')
+  }
+
   e.click()
 })
