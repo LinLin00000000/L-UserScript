@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.7.2
+// @version      0.8.0
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -762,7 +762,7 @@ var useNfts = () => waitForObject("ccmgipData.nft.data", {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.7.2"
+    version: "0.8.0"
   },
   {
     dev: false,
@@ -1144,13 +1144,20 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/replaceBlind")) {
       return;
     }
     const onSalePrice = nftData.on_sale_lowest_price / 100;
+    const l2Price = nftData.l2_lowest_price / 100;
+    const liquidCount = nftData.liquid_count;
+    const text = [
+      onSalePrice,
+      l2Price ? `合约${l2Price} (${(onSalePrice / l2Price).toFixed(2)}x)` : null,
+      `流通${liquidCount}`
+    ].filter((e) => e !== null).join(" | ");
     const priceSpan = document.createElement("span");
     priceSpan.className = "on-sale-price";
     priceSpan.style.fontSize = "12px";
     priceSpan.style.display = "inline-block";
     priceSpan.style.color = "#ff9900";
     priceSpan.style.marginLeft = "5px";
-    priceSpan.textContent = onSalePrice;
+    priceSpan.textContent = text;
     nameElement.appendChild(priceSpan);
     processedItems.push({
       element: item,
@@ -1258,7 +1265,10 @@ GM_addStyle(`
       l2Price === 0 ? "" : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
       `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`,
       buyPrice ? `买入均 ${buyPrice.toFixed(2)} (${(onSalePrice / buyPrice).toFixed(2)} x)` : "",
-      offerPrice ? `已寄售 ${offerPrice} (${(onSalePrice / offerPrice).toFixed(2)} x)` : ""
+      // offerPrice
+      //   ? `已寄售 ${offerPrice} (${(onSalePrice / offerPrice).toFixed(2)} x)`
+      //   : '',
+      `市流通 ${nftData.on_sale_count}/${nftData.liquid_count} (${(nftData.on_sale_count / nftData.liquid_count * 100).toFixed(2)}%)`
     ].filter((e) => e !== "").join("\n");
     item.insertAdjacentHTML(
       "beforeend",
@@ -1288,11 +1298,15 @@ GM_addStyle(`
       let onSalePrice;
       let l2Price;
       let lastestPrice;
+      let onSaleCount = null;
+      let liquidCount = null;
       const nftData = nfts.byName[name];
       if (nftData) {
         onSalePrice = nftData.on_sale_lowest_price / 100;
         l2Price = nftData.l2_lowest_price / 100;
         lastestPrice = nftData.l2_lastest_price / 100;
+        onSaleCount = nftData.on_sale_count;
+        liquidCount = nftData.liquid_count;
         const userHold = parseInt(nameElement.lastChild.textContent.trim());
         if (userHold > 0) {
           const url = `https://art.ccmgip.com/collection/list?id=${nftData.id}&type=nft&title=${encodeURIComponent(
@@ -1328,6 +1342,8 @@ GM_addStyle(`
           0
         );
         lastestPrice /= nftDataList.length * 100;
+        onSaleCount = nftDataList.reduce((acc, e) => acc + e.on_sale_count, 0);
+        liquidCount = nftDataList.reduce((acc, e) => acc + e.liquid_count, 0);
       }
       const l2PriceIsZero = l2Price === 0;
       onSalePrice = onSalePrice.toFixed(2);
@@ -1336,7 +1352,8 @@ GM_addStyle(`
       const text = [
         showOnSalePrice ? `市售价 ${onSalePrice} (${(onSalePrice * 0.95).toFixed(2)})` : "",
         l2PriceIsZero ? "" : `合约价 ${l2Price} (${(onSalePrice / l2Price).toFixed(2)} x)`,
-        `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`
+        `新成交 ${lastestPrice} (${(onSalePrice / lastestPrice).toFixed(2)} x)`,
+        onSaleCount !== null && liquidCount !== null ? `市流通 ${onSaleCount}/${liquidCount} (${(onSaleCount / liquidCount * 100).toFixed(2)}%)` : ""
       ].filter((e) => e !== "").join("\n");
       parentElement.insertAdjacentHTML(
         "beforeend",
@@ -1370,23 +1387,6 @@ monitorApiRequests("https://l2-api.ccmgip.com/api/v1/users/me/saleorders", {
   onResponse: async ({ data, response }) => {
     if (response.status !== 200)
       return;
-    if (response.responseURL.includes("saleType=offer")) {
-      log("寄售订单数据:", data);
-      const currentOrders = orderStore.value;
-      let changed = false;
-      data.forEach((e) => {
-        const { nftName: name, nfcNumber: number, currentPrice } = e;
-        log(`寄售藏品: ${name}, 编号: ${number}, 价格: ${currentPrice / 100}`);
-        currentOrders[name] ||= {};
-        if (currentOrders[name][number] !== currentPrice) {
-          currentOrders[name].offer = currentPrice;
-          changed = true;
-        }
-      });
-      if (changed) {
-        orderStore.value = currentOrders;
-      }
-    }
     if (response.responseURL.includes("saleStatus=sold")) {
       log("出售订单数据:", data);
       const currentOrders = orderStore.value;
