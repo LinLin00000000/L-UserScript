@@ -13,7 +13,7 @@ import { dataManagerInit, useNfts } from './ccmgipDataManager'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.8.0',
+    version: '0.8.1',
   },
   {
     dev: false,
@@ -24,7 +24,8 @@ await mybuild(
 const { log } = console
 
 dataManagerInit()
-window.orderStore = useStore('orderStore', {})
+unsafeWindow ||= globalThis
+unsafeWindow.orderStore = useStore('orderStore', {})
 
 // 捐助活动页面
 if (
@@ -71,8 +72,8 @@ if (
         return
       }
 
-      const l2Price = pointValue / 100
-      // const l2Price = nftData.l2_lowest_price / 100
+      // const l2Price = pointValue / 100
+      const l2Price = nftData.l2_lowest_price / 100
 
       if (l2Price && l2Price > 0) {
         ratioValue = onSalePrice / l2Price
@@ -389,6 +390,41 @@ const replaceBlindDetails = {
       name: '虎钮如意云纹青玉握',
       probability: 1,
     },
+  ],
+  // 盲盒置换七十二
+  '01968491-623f-46d7-a4b6-8db296d3d9b1': [
+    { name: '洗象图', probability: 15.0 },
+    { name: '九龙山居图', probability: 15.0 },
+    { name: '海棠春秋图', probability: 15.0 },
+    { name: '花鸟图', probability: 15.0 },
+    { name: '调琴啜茗图', probability: 15.0 },
+    { name: '忒PANDA·国风', probability: 0.1 },
+    { name: '忒PANDA·赛博', probability: 0.1 },
+    { name: '忒PANDA·复古', probability: 0.1 },
+    { name: '千里江山图', probability: 0.5 },
+    { name: '步辇图', probability: 0.5 },
+    { name: '韩熙载夜宴图', probability: 0.5 },
+    { name: '五牛图', probability: 0.5 },
+    { name: '清明上河图', probability: 0.5 },
+    { name: '唐宫仕女图-虢国夫人游春图', probability: 0.5 },
+    { name: '青铜面具', probability: 0.4 },
+    { name: '杂花图', probability: 0.5 },
+    { name: '北宋泥塑彩绘菩萨立像', probability: 0.5 },
+    { name: '隶书道德经', probability: 0.5 },
+    { name: '青铜扭头跪坐人像', probability: 0.5 },
+    { name: '猴猫图', probability: 0.5 },
+    { name: '倪宽赞', probability: 1.0 },
+    { name: '象尊', probability: 1.0 },
+    { name: '鎏金犀牛', probability: 1.0 },
+    { name: '八花图', probability: 1.0 },
+    { name: '江山万里图', probability: 1.0 },
+    { name: '“范仲淹印”玉龟纽印', probability: 1.0 },
+    { name: '前赤壁赋', probability: 1.0 },
+    { name: '虎钮如意云纹青玉握', probability: 2.0 },
+    { name: '花鸟草虫图', probability: 1.0 },
+    { name: '铜刺猬', probability: 3.0 },
+    { name: '三彩胡人抱罐骑马俑', probability: 3.0 },
+    { name: '辋川别墅图', probability: 3.0 },
   ],
 }
 
@@ -815,3 +851,5 @@ monitorApiRequests('https://l2-api.ccmgip.com/api/v1/users/me/saleorders', {
     }
   },
 })
+
+unsafeWindow.nfts = await useNfts()
