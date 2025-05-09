@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ccmgip helper
 // @namespace    L-UserScript
-// @version      0.8.1
+// @version      0.8.2
 // @author       Lin
 // @license      MIT License
 // @source       https://github.com/LinLin00000000/L-UserScript
@@ -763,7 +763,7 @@ var useNfts = () => waitForObject("ccmgipData.nft.data", {
 await mybuild(
   {
     match: ["https://*.ccmgip.com/*"],
-    version: "0.8.1"
+    version: "0.8.2"
   },
   {
     dev: false,
@@ -807,7 +807,7 @@ if (location.href.includes("https://ershisi.ccmgip.com/24solar/donationActivity"
         log(`无法解析积分值: ${pointsElement.textContent}`);
         return;
       }
-      const l2Price = nftData.l2_lowest_price / 100;
+      const l2Price = pointValue / 100;
       if (l2Price && l2Price > 0) {
         ratioValue = onSalePrice / l2Price;
         ratio = `${onSalePrice} / ${l2Price} = ${ratioValue.toFixed(2)}`;

@@ -13,7 +13,7 @@ import { dataManagerInit, useNfts } from './ccmgipDataManager'
 await mybuild(
   {
     match: ['https://*.ccmgip.com/*'],
-    version: '0.8.1',
+    version: '0.8.2',
   },
   {
     dev: false,
@@ -72,8 +72,8 @@ if (
         return
       }
 
-      // const l2Price = pointValue / 100
-      const l2Price = nftData.l2_lowest_price / 100
+      const l2Price = pointValue / 100
+      // const l2Price = nftData.l2_lowest_price / 100
 
       if (l2Price && l2Price > 0) {
         ratioValue = onSalePrice / l2Price
